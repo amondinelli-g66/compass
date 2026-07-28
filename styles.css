@@ -899,7 +899,9 @@ button { font-family: inherit; }
    vencido, que es lo único que obliga a actuar; el ámbar avisa de lo que vence pronto
    sin competir con él. */
 .form-vigencia {
-  margin: 0 14px 12px;
+  /* Con margen arriba: si no, la franja queda pegada al encabezado celeste y los dos
+     bloques de color se leen como uno. En el PDF esa separación la da un Spacer. */
+  margin: 12px 14px;
   padding: 9px 12px;
   border-radius: 8px;
   font-size: 12.5px;
@@ -913,7 +915,7 @@ button { font-family: inherit; }
 /* Verificación contra la MRZ. Discreta a propósito: solo la discrepancia merece
    atención, y va en ámbar (el rojo queda para el documento vencido). */
 .form-validacion {
-  margin: 0 14px 12px;
+  margin: 12px 14px;
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 11.5px;
