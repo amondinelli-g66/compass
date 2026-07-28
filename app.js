@@ -553,32 +553,46 @@ function _secciones(secciones) {
 }
 
 /**
- * Datos que el cliente completó en un formulario KYC.
+ * Datos leídos de un documento con esquema: un formulario KYC de la empresa o un
+ * documento de identidad. Los dos se dibujan igual porque el backend (`core/campos.py`)
+ * les da la misma forma.
  *
- * Solo aparece si el documento era uno de los tres formularios (ver
- * `plantillas/` en el backend). Las casillas se muestran como texto: solo lo
- * marcado, nunca la lista completa.
+ * Las casillas se muestran como texto: solo lo marcado, nunca la lista completa.
  *
  * Un campo vacío dice "En blanco" y no "Sin dato": el campo existe en el papel y el
  * cliente decidió no completarlo, que es información en sí misma.
+ *
+ * Si el documento vence, arriba va una franja con cuántos días quedan (o cuántos lleva
+ * vencido, en rojo). Ese cálculo lo hace el backend, para que la pantalla y el PDF
+ * digan exactamente lo mismo.
  */
-function _formulario(formulario) {
+function _extraido(extraido, titulo, unidad) {
   const caja = crear('div', 'form');
 
   const enc = crear('div', 'form-encabezado');
-  enc.append(crear('span', 'form-titulo', 'Datos declarados en el formulario'));
-  const comp = formulario.completitud || {};
+  const izq = crear('div', 'form-encabezado-txt');
+  izq.append(crear('span', 'form-titulo', titulo));
+  // De quién es el documento, para no tener que buscarlo entre los campos.
+  if (extraido.titular) izq.append(crear('span', 'form-titular', extraido.titular));
+  enc.append(izq);
+  const comp = extraido.completitud || {};
   enc.append(crear('span', 'form-completitud',
-    `${comp.completados || 0} de ${comp.total || 0} campos completados`));
+    `${comp.completados || 0} de ${comp.total || 0} ${unidad || 'campos completados'}`));
   caja.append(enc);
 
-  if (formulario.error) {
+  // El vencimiento va arriba de los campos: es lo que hay que ver primero.
+  if (extraido.vigencia) {
+    caja.append(crear('div', 'form-vigencia form-vigencia--' + extraido.vigencia.estado,
+      extraido.vigencia.texto));
+  }
+
+  if (extraido.error) {
     caja.append(crear('div', 'doc-motivo',
-      'No se pudieron leer los campos: ' + formulario.error));
+      'No se pudieron leer los datos: ' + extraido.error));
     return caja;
   }
 
-  for (const seccion of formulario.secciones || []) {
+  for (const seccion of extraido.secciones || []) {
     const grupo = crear('div', 'form-seccion');
     grupo.append(crear('h3', 'form-seccion-titulo', seccion.titulo));
 
@@ -644,8 +658,17 @@ function _documentos(analisis) {
   const r = analisis.resumen || {};
   const recuento = [`${r.archivos || 0} archivo(s)`, `${r.documentos || 0} documento(s)`];
   if (r.formularios) recuento.push(`${r.formularios} formulario(s)`);
+  if (r.identidades) recuento.push(`${r.identidades} documento(s) de identidad`);
   recuento.push(`${r.a_revision || 0} a revisión`);
   enc.append(crear('span', 'docs-resumen', recuento.join(' · ')));
+  // Un documento de identidad vencido se avisa acá arriba y no solo dentro de su
+  // tarjeta: es lo que hace que el analista no siga adelante sin verlo.
+  if (r.identidades_vencidas) {
+    enc.append(crear('span', 'docs-vencidos',
+      r.identidades_vencidas === 1
+        ? '1 documento de identidad vencido'
+        : `${r.identidades_vencidas} documentos de identidad vencidos`));
+  }
   caja.append(enc);
 
   for (const archivo of analisis.archivos || []) {
@@ -689,9 +712,18 @@ function _documentos(analisis) {
       if (c.motivo) bloque.append(crear('div', 'doc-motivo', c.motivo));
 
       // Si el documento era uno de los formularios KYC, lo que completó el cliente.
-      if (c.formulario) bloque.append(_formulario(c.formulario));
+      if (c.formulario) {
+        bloque.append(_extraido(c.formulario, 'Datos declarados en el formulario'));
+      }
 
       tarjeta.append(bloque);
+    }
+
+    // El documento de identidad cuelga del ARCHIVO y no de una clasificación: el
+    // frente y el reverso de una cédula son dos clasificaciones pero un solo documento.
+    if (archivo.identidad) {
+      tarjeta.append(_extraido(archivo.identidad, 'Datos del documento de identidad',
+        'datos leídos'));
     }
 
     caja.append(tarjeta);

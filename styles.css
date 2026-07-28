@@ -885,6 +885,42 @@ button { font-family: inherit; }
   font-size: 12px;
 }
 
+/* Nombre del titular, bajo el título del bloque: responde "¿de quién es esto?" sin
+   tener que buscar entre los campos. */
+.form-encabezado-txt { display: grid; gap: 2px; }
+
+.form-titular {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5A6685;
+}
+
+/* Franja de vigencia de un documento de identidad. El rojo está reservado para lo
+   vencido, que es lo único que obliga a actuar; el ámbar avisa de lo que vence pronto
+   sin competir con él. */
+.form-vigencia {
+  margin: 0 14px 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.form-vigencia--vencido { background: #FDE3E1; color: #B3261E; }
+.form-vigencia--por_vencer { background: var(--orange-light); color: #8A3B00; }
+.form-vigencia--vigente { background: var(--green-light); color: var(--green-dark); }
+
+/* Aviso de vencidos junto al título de la sección, para que no haya que abrir cada
+   tarjeta para enterarse. */
+.docs-vencidos {
+  background: #FDE3E1;
+  color: #B3261E;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
 .form-etiqueta {
   font-size: 11px;
   font-weight: 500;
