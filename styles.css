@@ -910,6 +910,22 @@ button { font-family: inherit; }
 .form-vigencia--por_vencer { background: var(--orange-light); color: #8A3B00; }
 .form-vigencia--vigente { background: var(--green-light); color: var(--green-dark); }
 
+/* Verificación contra la MRZ. Discreta a propósito: solo la discrepancia merece
+   atención, y va en ámbar (el rojo queda para el documento vencido). */
+.form-validacion {
+  margin: 0 14px 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  display: grid;
+  gap: 3px;
+}
+
+.form-validacion--concuerda { background: #F4F6FA; color: #5A6685; }
+.form-validacion--no_verificable { background: #F4F6FA; color: #8A93AD; }
+.form-validacion--discrepancias { background: var(--orange-light); color: #8A3B00; }
+.form-validacion-dif { font-size: 11px; }
+
 /* Aviso de vencidos junto al título de la sección, para que no haya que abrir cada
    tarjeta para enterarse. */
 .docs-vencidos {

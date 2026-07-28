@@ -586,6 +586,9 @@ function _extraido(extraido, titulo, unidad) {
       extraido.vigencia.texto));
   }
 
+  // Y debajo, si el documento traía MRZ, si concuerda con lo impreso.
+  if (extraido.validacion) caja.append(_validacion(extraido.validacion));
+
   if (extraido.error) {
     caja.append(crear('div', 'doc-motivo',
       'No se pudieron leer los datos: ' + extraido.error));
@@ -609,6 +612,26 @@ function _extraido(extraido, titulo, unidad) {
     caja.append(grupo);
   }
 
+  return caja;
+}
+
+/**
+ * Resultado de verificar los datos impresos contra la MRZ del reverso.
+ *
+ * La MRZ no se muestra (no le dice nada al analista): se usa para comprobar el resto
+ * del documento contra sí mismo. Una discrepancia es lo único que pide ir a mirar el
+ * documento; que no se pueda verificar es información, no alarma.
+ */
+function _validacion(validacion) {
+  const caja = crear('div', 'form-validacion form-validacion--' + validacion.estado);
+  caja.append(crear('span', 'form-validacion-txt', validacion.texto));
+  for (const d of validacion.discrepancias || []) {
+    const linea = crear('div', 'form-validacion-dif');
+    linea.append(crear('b', null, d.campo), ': el documento dice ');
+    linea.append(crear('b', null, `"${d.documento}"`), ' y la MRZ ');
+    linea.append(crear('b', null, `"${d.mrz}"`));
+    caja.append(linea);
+  }
   return caja;
 }
 
@@ -671,6 +694,14 @@ function _documentos(analisis) {
   }
   caja.append(enc);
 
+  // El documento de identidad va PRIMERO y sin nombre de archivo: es una sola cosa
+  // (frente y reverso unificados) y responde de quién son los demás documentos.
+  for (const documento of analisis.identidades || []) {
+    const tarjeta = crear('article', 'doc');
+    tarjeta.append(_extraido(documento, 'Documento de identidad', 'datos leídos'));
+    caja.append(tarjeta);
+  }
+
   for (const archivo of analisis.archivos || []) {
     const tarjeta = crear('article', 'doc');
 
@@ -719,12 +750,6 @@ function _documentos(analisis) {
       tarjeta.append(bloque);
     }
 
-    // El documento de identidad cuelga del ARCHIVO y no de una clasificación: el
-    // frente y el reverso de una cédula son dos clasificaciones pero un solo documento.
-    if (archivo.identidad) {
-      tarjeta.append(_extraido(archivo.identidad, 'Datos del documento de identidad',
-        'datos leídos'));
-    }
 
     caja.append(tarjeta);
   }
