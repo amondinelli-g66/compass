@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compass — Analisis de clientes</title>
+<meta name="description" content="Compass: revision documental y de datos de clientes para cumplimiento.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<!-- ====================================================================== *
+     Sprite de la marca: una aguja de compas de dos colores (norte/sur) dentro
+     de un anillo fino. Deliberadamente simple para que se lea bien incluso a
+     36px (en la barra, con sesion iniciada).
+       #marca       -> para fondo claro (verde + navy sobre blanco)
+       #marca-claro -> para fondo navy (verde + celeste: los dos colores que
+                       mas contrastan contra ese azul)
+     Se definen una vez y se reutilizan con <use>.
+     ====================================================================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marca" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="none" stroke="#0F48C7" stroke-opacity=".22" stroke-width="2.5"/>
+    <path d="M32 5 38.5 32 25.5 32Z" fill="#01D196"/>
+    <path d="M32 59 38.5 32 25.5 32Z" fill="#131F44"/>
+    <circle cx="32" cy="32" r="3.6" fill="#FFFFFF" stroke="#131F44" stroke-width="1.2"/>
+  </symbol>
+
+  <symbol id="marca-claro" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="28" fill="none" stroke="#FFFFFF" stroke-opacity=".30" stroke-width="2.5"/>
+    <path d="M32 5 38.5 32 25.5 32Z" fill="#01D196"/>
+    <path d="M32 59 38.5 32 25.5 32Z" fill="#76B9F8"/>
+    <circle cx="32" cy="32" r="3.6" fill="#FFFFFF"/>
+  </symbol>
+</svg>
+
+
+<!-- ====================================================================== *
+     Pantalla 1 — Inicio de sesion
+     ====================================================================== -->
+<main class="login" id="pantalla-login">
+  <div class="login-card">
+    <div class="logo logo--grande">
+      <svg width="62" height="62"><use href="#marca"></use></svg>
+      <span class="logo-texto">Compass<span class="logo-sub">Compliance</span></span>
+    </div>
+
+    <h1 class="login-titulo">Inicia sesion para continuar</h1>
+    <p class="login-texto">
+      El acceso esta restringido a cuentas corporativas de Global66.
+    </p>
+
+    <div class="login-boton" id="boton-google"></div>
+
+    <div class="mensaje mensaje--error oculto" id="login-error" style="margin-top:24px;margin-bottom:0"></div>
+
+    <!-- Diagnostico: aparece solo si hay error, para poder comparar el cliente de
+         OAuth que usa el backend con el que se edito en Google Cloud Console. -->
+    <p class="login-diag oculto" id="login-diag"></p>
+  </div>
+</main>
+
+
+<!-- ====================================================================== *
+     Pantalla 2 — Aplicacion
+     ====================================================================== -->
+<div class="oculto" id="pantalla-app">
+
+  <header class="barra">
+    <div class="barra-inner">
+      <div class="logo logo--barra">
+        <svg width="36" height="36"><use href="#marca-claro"></use></svg>
+        <span class="logo-texto">Compass</span>
+      </div>
+
+      <span class="barra-divisor" aria-hidden="true"></span>
+
+      <img class="logo-g66" src="global66-logo-blanco.png" alt="Global66"
+           width="122" height="38">
+
+      <div class="barra-espacio"></div>
+
+      <div class="barra-derecha">
+        <span class="estado estado--cargando" id="estado-vpn" title="Estado de la VPN y la base de datos">
+          <span class="estado-punto"></span>
+          <span id="estado-vpn-texto">Verificando VPN</span>
+        </span>
+
+        <div class="usuario">
+          <img class="usuario-foto" id="usuario-foto" alt="" width="34" height="34">
+          <div class="usuario-textos">
+            <div class="usuario-nombre" id="usuario-nombre"></div>
+            <div class="usuario-mail" id="usuario-mail"></div>
+          </div>
+        </div>
+
+        <button class="btn btn--fantasma" id="boton-salir" type="button">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <div class="encabezado">
+      <h1>Analisis de cliente</h1>
+      <p>Selecciona el segmento, ingresa el ID del cliente y adjunta los documentos recibidos.</p>
+    </div>
+
+    <div class="mensaje mensaje--error oculto" id="app-error"></div>
+    <div class="mensaje mensaje--ok oculto" id="app-ok"></div>
+
+    <!-- Paso 1 — Segmento -->
+    <section class="tarjeta">
+      <div class="paso">
+        <span class="paso-num">1</span>
+        <div>
+          <h2>Segmento del cliente</h2>
+          <p>Define que consulta se ejecuta sobre la base de datos.</p>
+        </div>
+      </div>
+
+      <div class="segmentos" role="group" aria-label="Segmento del cliente">
+        <button class="segmento" type="button" id="seg-b2c" data-segmento="B2C"
+                aria-pressed="false" aria-label="B2C, persona natural">
+          <span class="segmento-check" aria-hidden="true">&check;</span>
+          <span class="segmento-tag">B2C</span>
+          <span class="segmento-desc">Persona natural</span>
+        </button>
+        <button class="segmento" type="button" id="seg-b2b" data-segmento="B2B"
+                aria-pressed="false" aria-label="B2B, persona juridica o empresa">
+          <span class="segmento-check" aria-hidden="true">&check;</span>
+          <span class="segmento-tag">B2B</span>
+          <span class="segmento-desc">Persona juridica / empresa</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Paso 2 — Datos -->
+    <section class="tarjeta">
+      <div class="paso">
+        <span class="paso-num">2</span>
+        <div>
+          <h2>Datos y documentos</h2>
+          <p>Los documentos son opcionales: puedes ejecutar solo la consulta.</p>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label class="etiqueta" for="id-cliente">ID de cliente</label>
+        <input class="entrada" id="id-cliente" type="text" inputmode="numeric"
+               placeholder="Ej: 482913" autocomplete="off" spellcheck="false">
+        <p class="ayuda">Identificador interno del cliente (customer_id).</p>
+      </div>
+
+      <div class="campo">
+        <label class="etiqueta" for="archivos">Documentos del cliente</label>
+
+        <div class="zona" id="zona" role="button" tabindex="0"
+             aria-label="Seleccionar o arrastrar documentos">
+          <div class="zona-icono">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
+              <path d="M3 15v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/>
+            </svg>
+          </div>
+          <p class="zona-titulo">Arrastra los archivos o haz clic para seleccionar</p>
+          <p class="zona-texto">PDF, PNG, JPG o WEBP. Varios archivos a la vez.</p>
+        </div>
+
+        <input id="archivos" type="file" multiple class="oculto"
+               accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp">
+
+        <ul class="archivos" id="lista-archivos"></ul>
+
+        <div class="aviso">
+          <span class="aviso-icono" aria-hidden="true">&#9888;</span>
+          <span>
+            Los documentos se analizan en memoria y se descartan al terminar.
+            No se almacenan en ningun repositorio.
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Paso 3 — Ejecutar -->
+    <div class="accion">
+      <div class="accion-resumen" id="resumen">Selecciona un segmento para comenzar.</div>
+      <button class="btn btn--cta btn--grande" id="boton-analizar" type="button" disabled>
+        Iniciar análisis
+      </button>
+    </div>
+
+    <!-- Resultado del analisis. Lo puebla app.js con lo que devuelve el backend. -->
+    <section class="resultado oculto" id="resultado" aria-live="polite"></section>
+  </main>
+
+  <footer class="pie">
+    <!-- El pie va sobre fondo claro: aqui el logo original (azul), no el blanco. -->
+    <img class="logo-g66--pie" src="global66-logo.webp" alt="Global66"
+         width="96" height="30">
+    <span>Compass &middot; Uso interno</span>
+  </footer>
+</div>
+
+
+<!-- ====================================================================== *
+     Modal — VPN desconectada
+     ====================================================================== -->
+<div class="modal-fondo oculto" id="modal-vpn" role="dialog" aria-modal="true" aria-labelledby="modal-vpn-titulo">
+  <div class="modal">
+    <div class="modal-icono">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round">
+        <path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v5"/><circle cx="12" cy="17.5" r=".8" fill="currentColor"/>
+      </svg>
+    </div>
+    <h2 id="modal-vpn-titulo">VPN desconectada</h2>
+    <p>
+      La base de datos solo es accesible a traves de la VPN corporativa.
+      Conectala para poder ejecutar el analisis.
+    </p>
+
+    <ol class="modal-pasos">
+      <li>Abre el cliente de OpenVPN.</li>
+      <li>Conecta el perfil corporativo de Global66.</li>
+      <li>Vuelve aqui y presiona Reintentar.</li>
+    </ol>
+
+    <button class="btn btn--sec" id="boton-reintentar-vpn" type="button">Reintentar conexion</button>
+    <p class="modal-detalle" id="modal-vpn-detalle"></p>
+  </div>
+</div>
+
+
+<!-- ====================================================================== *
+     Modal — Sesion expirada
+     ====================================================================== -->
+<div class="modal-fondo oculto" id="modal-sesion" role="dialog" aria-modal="true" aria-labelledby="modal-sesion-titulo">
+  <div class="modal">
+    <div class="modal-icono">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+      </svg>
+    </div>
+    <h2 id="modal-sesion-titulo">Sesion cerrada por inactividad</h2>
+    <p>Por seguridad la sesion se cerro tras 10 minutos sin actividad.</p>
+    <button class="btn btn--cta" id="boton-reiniciar-sesion" type="button" style="margin-top:22px">
+      Volver a iniciar sesion
+    </button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
