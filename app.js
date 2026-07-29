@@ -589,6 +589,10 @@ function _extraido(extraido, titulo, unidad) {
   // Y debajo, si el documento traía MRZ, si concuerda con lo impreso.
   if (extraido.validacion) caja.append(_validacion(extraido.validacion));
 
+  // Después el contraste contra la base: primero el documento contra sí mismo, después
+  // contra lo que la empresa tiene registrado.
+  if (extraido.contraste) caja.append(_contraste(extraido.contraste));
+
   if (extraido.error) {
     caja.append(crear('div', 'doc-motivo',
       'No se pudieron leer los datos: ' + extraido.error));
@@ -631,6 +635,36 @@ function _validacion(validacion) {
     linea.append(crear('b', null, `"${d.documento}"`), ' y la MRZ ');
     linea.append(crear('b', null, `"${d.mrz}"`));
     caja.append(linea);
+  }
+  return caja;
+}
+
+/**
+ * Contraste del documento contra la base de datos.
+ *
+ * Misma franja que la verificación con la MRZ, para no inventar un lenguaje visual
+ * nuevo: lo verde concuerda, lo rojo hay que mirarlo, lo neutro es informativo.
+ *
+ * Si el documento NO es del cliente en análisis, el backend no compara campo por campo
+ * (serían discrepancias garantizadas entre dos personas distintas), así que acá solo
+ * hay una línea diciendo de quién es.
+ */
+function _contraste(contraste) {
+  const caja = crear('div', 'form-validacion form-validacion--' + contraste.estado);
+  caja.append(crear('span', 'form-validacion-txt', contraste.texto));
+
+  for (const d of contraste.discrepancias || []) {
+    const linea = crear('div', 'form-validacion-dif');
+    linea.append(crear('b', null, d.campo), ': el documento dice ');
+    linea.append(crear('b', null, `"${d.documento}"`), ' y la base ');
+    linea.append(crear('b', null, `"${d.base}"`));
+    caja.append(linea);
+  }
+
+  // Qué se pudo confirmar: sin esto, "concuerda" no dice contra qué.
+  if (contraste.coincidencias && contraste.coincidencias.length) {
+    caja.append(crear('div', 'form-validacion-dif',
+      'Coinciden: ' + contraste.coincidencias.join(' · ')));
   }
   return caja;
 }
@@ -691,6 +725,14 @@ function _documentos(analisis) {
       r.identidades_vencidas === 1
         ? '1 documento de identidad vencido'
         : `${r.identidades_vencidas} documentos de identidad vencidos`));
+  }
+  // Un documento que es de otro cliente se avisa acá arriba, igual que un vencido: es
+  // lo que hace que el analista no siga adelante sin verlo.
+  if (r.identidades_ajenas) {
+    enc.append(crear('span', 'docs-vencidos',
+      r.identidades_ajenas === 1
+        ? '1 documento no corresponde al cliente'
+        : `${r.identidades_ajenas} documentos no corresponden al cliente`));
   }
   caja.append(enc);
 

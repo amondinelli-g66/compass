@@ -926,6 +926,13 @@ button { font-family: inherit; }
 .form-validacion--concuerda { background: #F4F6FA; color: #5A6685; }
 .form-validacion--no_verificable { background: #F4F6FA; color: #8A93AD; }
 .form-validacion--discrepancias { background: var(--orange-light); color: #8A3B00; }
+/* Estados del contraste contra la base. Un documento que resulta ser de OTRO cliente es
+   lo más grave que puede salir del análisis, así que va en rojo, el mismo que se reserva
+   para un documento vencido. Que la persona no esté en la base es informativo —puede ser
+   un beneficiario legítimo—, así que va neutro. */
+.form-validacion--de_otro { background: #FDE3E1; color: #B3261E; }
+.form-validacion--fuera_de_base { background: #F4F6FA; color: #5A6685; }
+.form-validacion--sin_registro { background: #F4F6FA; color: #8A93AD; }
 .form-validacion-dif { font-size: 11px; }
 
 /* Aviso de vencidos junto al título de la sección, para que no haya que abrir cada
