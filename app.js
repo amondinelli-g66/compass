@@ -15,6 +15,9 @@ const CLAVE_SESION = 'compass_sesion';
 const CABECERA_SESION = 'X-Session-Token';
 const SONDEO_VPN_MS = 20000;    // cada cuanto se consulta el estado de VPN/BD
 const REVISION_IDLE_MS = 5000;  // cada cuanto se comprueba la inactividad
+// Cada cuanto se le avisa al BACKEND que hubo actividad, si la hubo. Bastante menor
+// que idleSeg (600s de por defecto) para que siempre llegue con margen de sobra.
+const RENOVACION_SESION_MS = 60000;
 
 const estado = {
   backend: '',
@@ -22,6 +25,7 @@ const estado = {
   usuario: null,
   idleSeg: 600,
   ultimaActividad: 0,
+  ultimaRenovacion: 0,
   segmento: null,
   archivos: [],
   vpnOk: false,
@@ -155,14 +159,37 @@ function guardarToken(token) {
  * temporizadores de las pestanas en segundo plano (y los congela al suspender el
  * equipo), asi que el contador se atrasa y la sesion sobreviviria mucho mas de 10
  * minutos. Comparar contra `Date.now()` es exacto pase lo que pase.
+ *
+ * Ademas de cerrar la sesion en PANTALLA cuando el frontend detecta inactividad,
+ * este mismo timer le avisa al BACKEND que hubo actividad (ver `RENOVACION_SESION_MS`
+ * mas abajo): sin eso, alguien podia estar activamente trabajando en la pagina sin
+ * que eso llamara nunca a la API, y el reloj de inactividad del backend (que solo se
+ * renueva con peticiones HTTP) expiraba igual. Al presionar por fin "Iniciar
+ * analisis" el backend rechazaba con 401 aunque el frontend nunca lo hubiera marcado
+ * inactivo.
  */
 function arrancarVigilanciaSesion() {
   clearInterval(timerSesion);
   registrarActividad();
+  estado.ultimaRenovacion = Date.now();
   timerSesion = setInterval(() => {
     if (!estado.token) return;
+
     if (Date.now() - estado.ultimaActividad >= estado.idleSeg * 1000) {
       cerrarPorInactividad();
+      return;
+    }
+
+    // Hubo actividad desde la ultima vez que se le aviso al backend, y ya paso el
+    // intervalo minimo entre avisos: se le avisa con una peticion liviana. Si no
+    // hubo actividad, no se hace nada, y la sesion expira en el backend por
+    // inactividad real, que es lo correcto.
+    if (estado.ultimaActividad > estado.ultimaRenovacion &&
+        Date.now() - estado.ultimaRenovacion >= RENOVACION_SESION_MS) {
+      estado.ultimaRenovacion = Date.now();
+      // El 401, si llegara, ya lo maneja `api()` cerrando la sesion; un error de red
+      // no debe romper el timer.
+      api('/auth/ping').catch(() => {});
     }
   }, REVISION_IDLE_MS);
 }
@@ -1023,8 +1050,10 @@ function conectarEventos() {
   $('boton-reintentar-vpn').addEventListener('click', () => sondearVpn());
   $('boton-reiniciar-sesion').addEventListener('click', () => location.reload());
 
-  // Actividad real del usuario -> reinicia la ventana de inactividad.
-  for (const evt of ['click', 'keydown', 'input', 'pointerdown']) {
+  // Actividad real del usuario -> reinicia la ventana de inactividad. `mousemove` y
+  // `scroll` cuentan aunque no se llegue a hacer click en nada: alguien que esta
+  // leyendo o moviendo el mouse sobre la pagina esta presente, no inactivo.
+  for (const evt of ['click', 'keydown', 'input', 'pointerdown', 'mousemove', 'scroll']) {
     document.addEventListener(evt, registrarActividad, { passive: true });
   }
 }
