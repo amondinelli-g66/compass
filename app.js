@@ -672,6 +672,25 @@ function _contraste(contraste) {
 function _valorFormulario(campo) {
   const valor = campo.valor;
 
+  // Pares suelto/valor: cada fila trae su PROPIO nombre de dato ("Nombre del Padre",
+  // "Código de verificación"), a diferencia de una tabla de columnas fijas. Se muestra
+  // el dato con su valor y nada más: sin las etiquetas de columna "Dato"/"Valor", que
+  // no dicen nada por sí solas.
+  if (campo.tipo === 'pares') {
+    const pares = (valor || []).filter((p) => p.valor);
+    if (!pares.length) return crear('span', 'form-valor form-valor--vacio', 'En blanco');
+    const caja = crear('div', 'form-filas');
+    for (const par of pares) {
+      const linea = crear('div', 'form-fila');
+      const celda = crear('span', 'form-celda');
+      celda.append(crear('span', 'form-celda-etiqueta', par.etiqueta));
+      celda.append(crear('span', null, par.valor));
+      linea.append(celda);
+      caja.append(linea);
+    }
+    return caja;
+  }
+
   if (campo.tipo === 'tabla') {
     const filas = (valor || []).filter((f) => f.some((c) => c.valor));
     if (!filas.length) return crear('span', 'form-valor form-valor--vacio', 'En blanco');
