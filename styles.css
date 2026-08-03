@@ -488,39 +488,9 @@ button { font-family: inherit; }
  * Resultado del análisis
  * ========================================================================== */
 
-/* Separador entre el formulario y la información del cliente */
-.resultado { margin-top: 40px; padding-top: 40px; position: relative; }
-
-.resultado::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #CBD3E4 18%, #CBD3E4 82%, transparent);
-}
-
-.resultado-titulo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: #7A85A3;
-}
-
-.resultado-titulo::after {
-  content: "";
-  flex: 1;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--green);
-  opacity: .35;
-}
+/* Boton para reabrir la ventana emergente sin volver a consultar (ver el modal
+   mas abajo): a todo el ancho de la tarjeta de accion, justo debajo. */
+.btn--reabrir { margin-top: 20px; width: 100%; justify-content: center; }
 
 /* Tarjeta de identidad: lo primero, para reconocer a la persona de un vistazo */
 .identidad {
@@ -670,12 +640,43 @@ button { font-family: inherit; }
   user-select: none;
 }
 
+/* Redondo y no cuadrado: se pidio explicitamente esta forma para distinguirlo de
+   un checkbox de formulario comun. `appearance: none` es necesario porque el
+   `border-radius` no tiene efecto sobre el control nativo del sistema operativo. */
 .incluir input {
+  appearance: none;
+  -webkit-appearance: none;
   width: 15px;
   height: 15px;
   margin: 0;
+  border-radius: 50%;
+  border: 2px solid var(--gray);
+  background: var(--white);
   cursor: pointer;
-  accent-color: var(--blue);
+  position: relative;
+  transition: var(--trans);
+}
+
+.incluir input:checked {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.incluir input:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 7px;
+  border: solid var(--white);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.incluir input:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 /* En las banderas destacadas el checkbox va en la ESQUINA SUPERIOR DERECHA del bloque,
@@ -1189,6 +1190,93 @@ button { font-family: inherit; }
   color: #7A85A3;
   margin-top: 18px;
   word-break: break-all;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Modal — Resultado del analisis
+ *
+ * A diferencia de los modales de VPN/sesion (chicos, centrados, todo texto), este
+ * necesita alojar un informe entero: es alto, con el encabezado y el pie FIJOS
+ * (para que "Descargar PDF" y "Cerrar" esten siempre a la vista) y solo el cuerpo
+ * hace scroll.
+ * -------------------------------------------------------------------------- */
+
+.modal--resultado {
+  max-width: 960px;
+  width: 94vw;
+  max-height: 88vh;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-resultado-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: none;
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.modal-resultado-cabecera h2 { font-size: 17px; }
+
+.modal-cerrar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: var(--light-gray);
+  color: var(--navy);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: var(--trans);
+}
+
+.modal-cerrar:hover { background: #E3E7F0; }
+
+.modal-resultado-cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px;
+  background: var(--light-gray);
+  /* Sin esto, al llegar al tope o al fondo del scroll el navegador sigue el gesto
+     en el elemento de atras (la pagina), y con el mouse sobre el modal la pagina
+     se movia sola. */
+  overscroll-behavior: contain;
+}
+
+/* Mientras el modal esta abierto la pagina de atras no debe poder scrollear: eso es
+   lo que realmente aisla el gesto, `overscroll-behavior` arriba solo cubre el caso
+   del limite del scroll. */
+body.modal-resultado-abierto { overflow: hidden; }
+
+.modal-resultado-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex: none;
+  padding: 18px 28px;
+  border-top: 1px solid var(--light-gray);
+  background: var(--white);
+}
+
+.modal-resultado-pie-texto { font-size: 12px; color: #5A6685; font-weight: 500; }
+.modal-resultado-pie-texto strong { color: var(--navy); font-weight: 600; }
+
+@media (max-width: 680px) {
+  .modal--resultado { max-height: 92vh; }
+  .modal-resultado-cabecera, .modal-resultado-cuerpo, .modal-resultado-pie { padding-inline: 18px; }
+  .modal-resultado-pie-texto { width: 100%; }
 }
 
 /* ========================================================================== *

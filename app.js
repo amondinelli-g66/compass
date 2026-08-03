@@ -501,13 +501,34 @@ function crear(tag, clase, contenido) {
 }
 
 function limpiarResultado() {
-  const caja = $('resultado');
-  caja.textContent = '';
-  mostrar(caja, false);
+  $('resultado').textContent = '';
+  cerrarModalResultado();
+  mostrar($('boton-reabrir-resultado'), false);
   estado.informe = null;
   // Los ids del analisis anterior ya no existen: si quedaran, el PDF del siguiente
   // cliente pediria bloques de este.
   estado.incluirEnPdf.clear();
+}
+
+/**
+ * Abre/cierra la ventana emergente del resultado.
+ *
+ * Cerrarla NO borra nada: el informe sigue armado en el DOM y en `estado`, asi que
+ * mientras no se cambie de cliente (eso si pasa por `limpiarResultado`) el boton
+ * "Ver resultado del analisis" puede reabrirla tal cual quedo.
+ */
+function abrirModalResultado() {
+  mostrar($('modal-resultado'), true);
+  mostrar($('boton-reabrir-resultado'), false);
+  // Bloquea el scroll de la pagina de atras: sin esto, al llegar al tope o al fondo
+  // del contenido del modal el gesto de scroll seguia moviendo la pagina detras.
+  document.body.classList.add('modal-resultado-abierto');
+}
+
+function cerrarModalResultado() {
+  mostrar($('modal-resultado'), false);
+  mostrar($('boton-reabrir-resultado'), Boolean(estado.informe));
+  document.body.classList.remove('modal-resultado-abierto');
 }
 
 function _identidad(enc) {
@@ -964,24 +985,20 @@ function _documentos(analisis) {
   return caja;
 }
 
-function _barraDescarga(informe, nombrePdf) {
-  const caja = crear('div', 'descarga');
-
-  const texto = crear('div', 'descarga-texto');
+/**
+ * Texto del pie fijo del modal ("Informe listo · N de M campos · archivo X.pdf").
+ *
+ * El boton "Descargar PDF" ya esta en el HTML (fijo, siempre a la vista): aca solo
+ * se actualiza el texto que lo acompaña.
+ */
+function _pieResultado(informe, nombrePdf) {
+  const el = $('resultado-pie-texto');
+  el.textContent = '';
   const comp = informe.completitud;
-  texto.append('Informe listo');
-  if (comp) texto.append(` · ${comp.con_dato} de ${comp.total} campos con dato`);
-  texto.append(' · archivo ');
-  texto.append(crear('strong', null, nombrePdf));
-  caja.append(texto);
-
-  const boton = crear('button', 'btn btn--sec', 'Descargar PDF');
-  boton.type = 'button';
-  boton.id = 'boton-pdf';
-  boton.addEventListener('click', () => descargarPdf(boton));
-  caja.append(boton);
-
-  return caja;
+  el.append('Informe listo');
+  if (comp) el.append(` · ${comp.con_dato} de ${comp.total} campos con dato`);
+  el.append(' · archivo ');
+  el.append(crear('strong', null, nombrePdf));
 }
 
 function _sinDatos(informe) {
@@ -1004,11 +1021,12 @@ function pintarResultado(respuesta) {
 
   const caja = $('resultado');
   caja.textContent = '';
-  caja.append(crear('h2', 'resultado-titulo', 'Información del cliente'));
 
   if (!informe.encontrado) {
     caja.append(_sinDatos(informe));
-    mostrar(caja, true);
+    // Nada que descargar: el pie con el boton de PDF no tiene sentido aca.
+    mostrar($('modal-resultado-pie'), false);
+    abrirModalResultado();
     return;
   }
 
@@ -1029,11 +1047,9 @@ function pintarResultado(respuesta) {
     caja.append(_documentos(informe.analisis_documentos));
   }
 
-  caja.append(_barraDescarga(informe, estado.nombrePdf));
-
-  // A proposito NO se hace scroll: el resultado aparece abajo y el analista baja
-  // cuando quiere, sin que la pagina se le mueva sola.
-  mostrar(caja, true);
+  _pieResultado(informe, estado.nombrePdf);
+  mostrar($('modal-resultado-pie'), true);
+  abrirModalResultado();
 }
 
 async function descargarPdf(boton) {
@@ -1167,6 +1183,18 @@ function conectarEventos() {
   $('boton-salir').addEventListener('click', salir);
   $('boton-reintentar-vpn').addEventListener('click', () => sondearVpn());
   $('boton-reiniciar-sesion').addEventListener('click', () => location.reload());
+
+  $('boton-pdf').addEventListener('click', () => descargarPdf($('boton-pdf')));
+  $('boton-cerrar-resultado').addEventListener('click', cerrarModalResultado);
+  $('boton-reabrir-resultado').addEventListener('click', abrirModalResultado);
+
+  // Escape cierra el modal del resultado, tenga informe o el mensaje de "no
+  // encontrado": los dos casos son el mismo modal.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('modal-resultado').classList.contains('oculto')) {
+      cerrarModalResultado();
+    }
+  });
 
   // Actividad real del usuario -> reinicia la ventana de inactividad. `mousemove` y
   // `scroll` cuentan aunque no se llegue a hacer click en nada: alguien que esta
