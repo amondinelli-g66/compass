@@ -33,6 +33,10 @@ const estado = {
   nonceRenovado: false,
   informe: null,
   nombrePdf: '',
+  // Los `id` de los bloques que el analista dejo marcados para el PDF. Los pone el
+  // backend (ver `core/informe.py: filtrar`); aca solo se recuerda cuales estan
+  // tildados y se manda la lista al pedir el PDF.
+  incluirEnPdf: new Set(),
 };
 
 let timerSesion = null;
@@ -501,6 +505,9 @@ function limpiarResultado() {
   caja.textContent = '';
   mostrar(caja, false);
   estado.informe = null;
+  // Los ids del analisis anterior ya no existen: si quedaran, el PDF del siguiente
+  // cliente pediria bloques de este.
+  estado.incluirEnPdf.clear();
 }
 
 function _identidad(enc) {
@@ -536,12 +543,42 @@ function _identidad(enc) {
   return caja;
 }
 
+/**
+ * Checkbox que decide si un bloque va al PDF.
+ *
+ * El `id` lo pone el backend y es lo unico que se le manda de vuelta al pedir el PDF:
+ * el checkbox no viaja ni se dibuja en el informe descargable, solo elige qué entra.
+ *
+ * `titulo` describe el bloque para el lector de pantalla, porque visualmente el
+ * checkbox va suelto al lado del contenido y sin etiqueta propia.
+ */
+function _incluir(id, titulo, marcadoPorDefecto = true) {
+  if (marcadoPorDefecto) estado.incluirEnPdf.add(id);
+  else estado.incluirEnPdf.delete(id);
+
+  const etiqueta = crear('label', 'incluir');
+  const casilla = document.createElement('input');
+  casilla.type = 'checkbox';
+  casilla.checked = marcadoPorDefecto;
+  casilla.setAttribute('aria-label', 'Incluir "' + titulo + '" en el PDF');
+  casilla.addEventListener('change', () => {
+    if (casilla.checked) estado.incluirEnPdf.add(id);
+    else estado.incluirEnPdf.delete(id);
+  });
+  etiqueta.append(casilla);
+  etiqueta.append(crear('span', 'incluir-texto', 'PDF'));
+  return etiqueta;
+}
+
 function _banderas(banderas) {
   const caja = crear('div', 'banderas');
   for (const b of banderas) {
     const item = crear('div', 'bandera bandera--' + (b.tono || 'neutro'));
     item.append(crear('span', 'bandera-etiqueta', b.etiqueta));
     item.append(crear('span', 'bandera-valor', b.valor));
+    // El estado inicial lo decide el backend (`pdf`): riesgo y compliance arrancan
+    // desmarcados porque historicamente no iban al descargable.
+    if (b.id) item.append(_incluir(b.id, b.etiqueta, b.pdf !== false));
     caja.append(item);
   }
   return caja;
@@ -570,7 +607,10 @@ function _secciones(secciones) {
   const caja = crear('div', 'datos');
   for (const s of secciones) {
     const grupo = crear('section', 'datos-grupo');
-    grupo.append(crear('h2', 'datos-titulo', s.titulo));
+    const cabecera = crear('div', 'datos-cabecera');
+    cabecera.append(crear('h2', 'datos-titulo', s.titulo));
+    if (s.id) cabecera.append(_incluir(s.id, s.titulo));
+    grupo.append(cabecera);
     const rejilla = crear('div', 'datos-rejilla');
     for (const campo of s.campos) rejilla.append(_dato(campo));
     grupo.append(rejilla);
@@ -748,10 +788,57 @@ function _valorFormulario(campo) {
 }
 
 /**
+ * Resumen de lo que varios documentos de identidad tienen en común.
+ *
+ * Solo aparece con dos o más (el backend devuelve `null` con uno solo, donde el resumen
+ * sería una copia). Un dato que no coincide entre ellos se marca con las dos versiones
+ * enfrentadas: no es necesariamente un problema (una doble nacionalidad es legítima),
+ * pero es lo primero que el analista quiere ver.
+ */
+function _resumenIdentidades(resumen) {
+  const caja = crear('article', 'doc');
+  const bloque = crear('div', 'form');
+
+  const enc = crear('div', 'form-encabezado');
+  const izq = crear('div', 'form-encabezado-txt');
+  izq.append(crear('span', 'form-titulo', resumen.titulo));
+  izq.append(crear('span', 'form-titular', resumen.documentos + ' documentos'));
+  enc.append(izq);
+  if (resumen.id) enc.append(_incluir(resumen.id, resumen.titulo));
+  bloque.append(enc);
+
+  bloque.append(crear('div', 'form-validacion form-validacion--' + resumen.estado,
+    resumen.texto));
+
+  const seccion = crear('div', 'form-seccion');
+  const campos = crear('div', 'form-campos');
+  for (const campo of resumen.campos || []) {
+    const fila = crear('div', 'form-campo');
+    fila.append(crear('span', 'form-etiqueta', campo.etiqueta));
+    if (campo.coincide) {
+      fila.append(crear('span', 'form-valor', campo.valor));
+    } else {
+      // Las versiones distintas, una ficha por cada una, para que se lea cuál dice qué.
+      const fichas = crear('div', 'form-fichas');
+      for (const v of campo.valores) {
+        fichas.append(crear('span', 'form-ficha form-ficha--dispar', v));
+      }
+      fila.append(fichas);
+    }
+    campos.append(fila);
+  }
+  seccion.append(campos);
+  bloque.append(seccion);
+
+  caja.append(bloque);
+  return caja;
+}
+
+/**
  * Análisis de documentos, una entrada por documento.
  *
- * Va después de la información de la persona. Por ahora cada documento se informa
- * por separado: no se contrasta entre documentos ni contra la consulta SQL.
+ * Va después de la información de la persona. Cada bloque lleva un checkbox que decide
+ * si va al PDF; el checkbox NO se dibuja en el informe descargable.
  */
 function _documentos(analisis) {
   const caja = crear('section', 'docs');
@@ -782,10 +869,25 @@ function _documentos(analisis) {
   }
   caja.append(enc);
 
+  // Con varios documentos de identidad, primero el resumen de lo que tienen en común:
+  // ahorra comparar dos fichas campo por campo.
+  if (analisis.resumen_identidades) {
+    caja.append(_resumenIdentidades(analisis.resumen_identidades));
+  }
+
   // El documento de identidad va PRIMERO y sin nombre de archivo: es una sola cosa
   // (frente y reverso unificados) y responde de quién son los demás documentos.
+  // Una persona puede tener VARIOS: cada uno es su propia entrada, con su checkbox.
   for (const documento of analisis.identidades || []) {
     const tarjeta = crear('article', 'doc');
+    const titulo = documento.titular
+      ? 'Documento de identidad de ' + documento.titular
+      : 'Documento de identidad';
+    if (documento.id) {
+      const barra = crear('div', 'doc-barra');
+      barra.append(_incluir(documento.id, titulo));
+      tarjeta.append(barra);
+    }
     tarjeta.append(_extraido(documento, 'Documento de identidad', 'datos leídos'));
     caja.append(tarjeta);
   }
@@ -796,6 +898,7 @@ function _documentos(analisis) {
     const cabecera = crear('div', 'doc-archivo');
     cabecera.append(crear('span', 'doc-archivo-icono', extension(archivo.archivo || '')));
     cabecera.append(crear('span', null, archivo.archivo || '—'));
+    if (archivo.id) cabecera.append(_incluir(archivo.id, archivo.archivo || 'documento'));
     tarjeta.append(cabecera);
 
     for (const c of archivo.clasificaciones || []) {
@@ -938,6 +1041,9 @@ async function descargarPdf(boton) {
   const cuerpo = new FormData();
   cuerpo.append('segmento', estado.segmento);
   cuerpo.append('id_cliente', $('id-cliente').value.trim());
+  // Solo los bloques que el analista dejo marcados. Va la lista de `id`, no el
+  // contenido: el backend rearma el informe desde la BD y descarta lo no elegido.
+  cuerpo.append('incluir', JSON.stringify([...estado.incluirEnPdf]));
 
   try {
     const resp = await api('/informe.pdf', { method: 'POST', body: cuerpo, crudo: true });

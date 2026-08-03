@@ -625,12 +625,86 @@ button { font-family: inherit; }
   padding: 24px 28px;
 }
 
+/* El título de la sección y su checkbox de "incluir en el PDF" comparten la línea, con
+   el borde verde abajo de las dos cosas. */
+.datos-cabecera {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 2px solid var(--green);
+}
+
+.datos-cabecera .datos-titulo {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+  flex: 1;
+}
+
 .datos-titulo {
   font-size: 15px;
   font-weight: 700;
   padding-bottom: 10px;
   margin-bottom: 4px;
   border-bottom: 2px solid var(--green);
+}
+
+/* -------------------------------------------------------------------------- *
+ * Checkbox "incluir en el PDF"
+ *
+ * Solo existe en pantalla: el PDF nunca lo dibuja, únicamente respeta lo elegido.
+ * Discreto a propósito -no es el contenido, es un control sobre el contenido- pero
+ * con área de click cómoda y el texto "PDF" para que se entienda sin tooltip.
+ * -------------------------------------------------------------------------- */
+
+.incluir {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  margin-left: auto;
+  padding: 3px 8px 3px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .55);
+  cursor: pointer;
+  user-select: none;
+  /* Que el control no herede el tamaño ni el color del bloque que lo aloja (una
+     bandera de color, un título grande): siempre se ve igual en todas partes. */
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #5A6685;
+  text-transform: none;
+}
+
+.incluir:hover { background: rgba(255, 255, 255, .9); }
+
+.incluir input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--blue);
+}
+
+.incluir-texto { opacity: .8; }
+
+/* Sobre fondo blanco (secciones de la persona, tarjetas de documento) el fondo
+   translúcido no se ve: se usa un gris suave. */
+.datos-cabecera .incluir,
+.doc-barra .incluir { background: var(--light-gray); }
+
+.datos-cabecera .incluir:hover,
+.doc-barra .incluir:hover { background: #E5E9F2; }
+
+/* Barra propia para el checkbox del documento de identidad, que no tiene cabecera de
+   archivo donde apoyarlo (se presenta unificado, sin nombre de archivo). */
+.doc-barra {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 22px 0;
 }
 
 .datos-rejilla {
@@ -980,6 +1054,15 @@ button { font-family: inherit; }
   font-size: 11.5px;
   font-weight: 600;
   color: var(--blue-dark);
+}
+
+/* Valores que NO coinciden entre los documentos de la persona. Ámbar y no rojo: una
+   doble nacionalidad o un apellido escrito distinto por dos organismos es legítimo,
+   pero es lo primero que hay que mirar. */
+.form-ficha--dispar {
+  background: var(--orange-light);
+  border-color: var(--orange);
+  color: #8A3B00;
 }
 
 .form-filas { display: grid; gap: 6px; }
