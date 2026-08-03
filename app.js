@@ -560,13 +560,17 @@ function _incluir(id, titulo, marcadoPorDefecto = true) {
   const casilla = document.createElement('input');
   casilla.type = 'checkbox';
   casilla.checked = marcadoPorDefecto;
-  casilla.setAttribute('aria-label', 'Incluir "' + titulo + '" en el PDF');
+  // Sin texto visible: solo el cuadrado. El proposito va en `title` (al pasar el mouse)
+  // y en `aria-label` (para lector de pantalla), que es lo que lo mantiene accesible
+  // sin ensuciar el bloque con una palabra repetida una vez por seccion.
+  const proposito = 'Incluir "' + titulo + '" en el PDF';
+  casilla.setAttribute('aria-label', proposito);
+  etiqueta.title = proposito;
   casilla.addEventListener('change', () => {
     if (casilla.checked) estado.incluirEnPdf.add(id);
     else estado.incluirEnPdf.delete(id);
   });
   etiqueta.append(casilla);
-  etiqueta.append(crear('span', 'incluir-texto', 'PDF'));
   return etiqueta;
 }
 
@@ -1124,7 +1128,15 @@ function conectarEventos() {
   $('seg-b2b').addEventListener('click', () => elegirSegmento('B2B'));
 
   $('id-cliente').addEventListener('input', () => {
+    // Al cambiar de cliente se limpia TODO lo del anterior: el informe y también los
+    // archivos cargados. Dejarlos era peligroso: son los documentos de otra persona y
+    // se habrían analizado contra el ID nuevo sin que nada lo advirtiera.
     if (estado.informe) limpiarResultado();
+    if (estado.archivos.length) {
+      estado.archivos = [];
+      $('archivos').value = '';   // sin esto el input recuerda la seleccion anterior
+      pintarArchivos();
+    }
     actualizarBoton();
   });
 

@@ -662,42 +662,36 @@ button { font-family: inherit; }
 .incluir {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
   flex: none;
   margin-left: auto;
-  padding: 3px 8px 3px 5px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .55);
+  /* Área de click cómoda alrededor de un cuadrado chico, sin ocupar espacio visible. */
+  padding: 4px;
   cursor: pointer;
   user-select: none;
-  /* Que el control no herede el tamaño ni el color del bloque que lo aloja (una
-     bandera de color, un título grande): siempre se ve igual en todas partes. */
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  color: #5A6685;
-  text-transform: none;
 }
 
-.incluir:hover { background: rgba(255, 255, 255, .9); }
-
 .incluir input {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   margin: 0;
   cursor: pointer;
   accent-color: var(--blue);
 }
 
-.incluir-texto { opacity: .8; }
+/* En las banderas destacadas el checkbox va en la ESQUINA SUPERIOR DERECHA del bloque,
+   no en la línea del valor: así no compite con el dato, que es lo que hay que leer. */
+.bandera { position: relative; }
 
-/* Sobre fondo blanco (secciones de la persona, tarjetas de documento) el fondo
-   translúcido no se ve: se usa un gris suave. */
-.datos-cabecera .incluir,
-.doc-barra .incluir { background: var(--light-gray); }
+.bandera .incluir {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  margin-left: 0;
+}
 
-.datos-cabecera .incluir:hover,
-.doc-barra .incluir:hover { background: #E5E9F2; }
+/* La etiqueta de la bandera deja aire a la derecha para no pasar por debajo del
+   checkbox cuando el texto es largo ("NIVEL DE RIESGO"). */
+.bandera .bandera-etiqueta { padding-right: 22px; }
 
 /* Barra propia para el checkbox del documento de identidad, que no tiene cabecera de
    archivo donde apoyarlo (se presenta unificado, sin nombre de archivo). */
