@@ -1,10 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Compass">
   <title>Compass</title>
-  <!-- Anillo -->
-  <circle cx="32" cy="32" r="28" fill="none" stroke="#0F48C7" stroke-opacity=".22" stroke-width="2.5"/>
-  <!-- Aguja: norte verde, sur navy -->
-  <path d="M32 5 38.5 32 25.5 32Z" fill="#01D196"/>
-  <path d="M32 59 38.5 32 25.5 32Z" fill="#131F44"/>
-  <!-- Pivote -->
-  <circle cx="32" cy="32" r="3.6" fill="#FFFFFF" stroke="#131F44" stroke-width="1.2"/>
+  <!-- Disco gris claro con borde navy: es lo que da SILUETA a tamano de favicon.
+       El borde mide 4 unidades sobre el viewBox de 64, que a 16px cae justo en 1px:
+       se ve fino donde el logo es grande y sigue nitido donde es chico. Con menos
+       (el anillo translucido de la version anterior) se difuminaba hasta perderse. -->
+  <circle cx="32" cy="32" r="30" fill="#F2F2F2" stroke="#131F44" stroke-width="4"/>
+  <!-- Aguja: norte verde, sur navy. Ancha (20 de 64) para que a 16px siga siendo una
+       aguja y no una astilla de 3px. -->
+  <path d="M32 11 42 33 22 33Z" fill="#01D196"/>
+  <path d="M32 55 42 33 22 33Z" fill="#131F44"/>
+  <!-- Pivote: blanco y sin contorno. Contrasta contra el verde y el navy que lo
+       rodean; con un borde de 1.2px encima se volvia una mancha en chico. -->
+  <circle cx="32" cy="33" r="2.6" fill="#FFFFFF"/>
 </svg>

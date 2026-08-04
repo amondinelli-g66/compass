@@ -12,27 +12,26 @@
 <body>
 
 <!-- ====================================================================== *
-     Sprite de la marca: una aguja de compas de dos colores (norte/sur) dentro
-     de un anillo fino. Deliberadamente simple para que se lea bien incluso a
-     36px (en la barra, con sesion iniciada).
-       #marca       -> para fondo claro (verde + navy sobre blanco)
-       #marca-claro -> para fondo navy (verde + celeste: los dos colores que
-                       mas contrastan contra ese azul)
-     Se definen una vez y se reutilizan con <use>.
+     Sprite de la marca: una aguja de compas de dos colores (norte/sur) sobre un
+     disco gris claro con borde navy.
+     El disco es lo que le da SILUETA en chico: sin el, a 16px (la barra de
+     pestanas ancladas) no se distinguia que era. El borde mide 4 unidades sobre
+     el viewBox de 64, que a 16px cae justo en 1px: se ve fino donde el logo es
+     grande y sigue nitido donde es chico.
+     Una SOLA marca para los dos fondos: al ser el disco claro y el borde oscuro,
+     se lee igual sobre blanco que sobre la barra navy (ahi el borde se funde con
+     el fondo y queda el disco, que contrasta de sobra). Antes hacian falta dos
+     variantes porque la aguja verde+navy sobre navy no se distinguia; con una
+     sola hay un lugar menos donde puedan desincronizarse.
      ====================================================================== -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="marca" viewBox="0 0 64 64">
-    <circle cx="32" cy="32" r="28" fill="none" stroke="#0F48C7" stroke-opacity=".22" stroke-width="2.5"/>
-    <path d="M32 5 38.5 32 25.5 32Z" fill="#01D196"/>
-    <path d="M32 59 38.5 32 25.5 32Z" fill="#131F44"/>
-    <circle cx="32" cy="32" r="3.6" fill="#FFFFFF" stroke="#131F44" stroke-width="1.2"/>
-  </symbol>
-
-  <symbol id="marca-claro" viewBox="0 0 64 64">
-    <circle cx="32" cy="32" r="28" fill="none" stroke="#FFFFFF" stroke-opacity=".30" stroke-width="2.5"/>
-    <path d="M32 5 38.5 32 25.5 32Z" fill="#01D196"/>
-    <path d="M32 59 38.5 32 25.5 32Z" fill="#76B9F8"/>
-    <circle cx="32" cy="32" r="3.6" fill="#FFFFFF"/>
+    <circle cx="32" cy="32" r="30" fill="#F2F2F2" stroke="#131F44" stroke-width="4"/>
+    <!-- Aguja ancha (20 de 64): en chico, la de 13 quedaba en una astilla de 3px. -->
+    <path d="M32 11 42 33 22 33Z" fill="#01D196"/>
+    <path d="M32 55 42 33 22 33Z" fill="#131F44"/>
+    <!-- Pivote sin contorno: contrasta contra el verde y el navy que lo rodean. -->
+    <circle cx="32" cy="33" r="2.6" fill="#FFFFFF"/>
   </symbol>
 </svg>
 
@@ -71,7 +70,7 @@
   <header class="barra">
     <div class="barra-inner">
       <div class="logo logo--barra">
-        <svg width="36" height="36"><use href="#marca-claro"></use></svg>
+        <svg width="36" height="36"><use href="#marca"></use></svg>
         <span class="logo-texto">Compass</span>
       </div>
 
@@ -192,8 +191,11 @@
       </button>
     </div>
 
-    <!-- Resultado del analisis. Lo puebla app.js con lo que devuelve el backend. -->
-    <section class="resultado oculto" id="resultado" aria-live="polite"></section>
+    <!-- Reabre la ventana emergente del resultado sin volver a consultar: aparece solo
+         despues de cerrarla, y solo mientras los datos sigan siendo los del mismo cliente. -->
+    <button class="btn btn--linea btn--reabrir oculto" id="boton-reabrir-resultado" type="button">
+      Ver resultado del análisis
+    </button>
   </main>
 
   <footer class="pie">
@@ -250,6 +252,31 @@
     <button class="btn btn--cta" id="boton-reiniciar-sesion" type="button" style="margin-top:22px">
       Volver a iniciar sesion
     </button>
+  </div>
+</div>
+
+
+<!-- ====================================================================== *
+     Modal — Resultado del analisis
+     La ventana emergente central en la que se muestra el informe. El fondo se ve
+     difuminado y mas oscuro (misma `.modal-fondo` que los otros dos modales).
+     El encabezado y el pie quedan fijos: el boton para descargar el PDF y el de
+     cerrar la ventana estan siempre a la vista aunque el informe sea largo y haya
+     que hacer scroll dentro del cuerpo.
+     ====================================================================== -->
+<div class="modal-fondo oculto" id="modal-resultado" role="dialog" aria-modal="true" aria-labelledby="modal-resultado-titulo">
+  <div class="modal modal--resultado">
+    <header class="modal-resultado-cabecera">
+      <h2 id="modal-resultado-titulo">Información del cliente</h2>
+      <button class="modal-cerrar" id="boton-cerrar-resultado" type="button" aria-label="Cerrar ventana">&times;</button>
+    </header>
+
+    <div class="modal-resultado-cuerpo" id="resultado" aria-live="polite"></div>
+
+    <footer class="modal-resultado-pie oculto" id="modal-resultado-pie">
+      <span class="modal-resultado-pie-texto" id="resultado-pie-texto"></span>
+      <button class="btn btn--sec" id="boton-pdf" type="button">Descargar PDF</button>
+    </footer>
   </div>
 </div>
 
