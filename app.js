@@ -412,9 +412,26 @@ function quitarArchivo(indice) {
   pintarArchivos();
 }
 
+/**
+ * Vacía la lista de documentos cargados.
+ *
+ * Hay que limpiar TAMBIÉN el value del input: si no, el navegador recuerda la
+ * selección anterior y volver a elegir el mismo archivo no dispara `change`, así que
+ * el analista lo elige y no pasa nada.
+ */
+function limpiarArchivos() {
+  if (!estado.archivos.length) return;
+  estado.archivos = [];
+  $('archivos').value = '';
+  pintarArchivos();
+}
+
 function pintarArchivos() {
   const ul = $('lista-archivos');
   ul.innerHTML = '';
+
+  // El botón de vaciar solo tiene sentido si hay algo cargado.
+  mostrar($('boton-limpiar-archivos'), estado.archivos.length > 0);
 
   estado.archivos.forEach((f, i) => {
     const li = document.createElement('li');
@@ -740,6 +757,10 @@ function _validacion(validacion) {
  * Si el documento NO es del cliente en análisis, el backend no compara campo por campo
  * (serían discrepancias garantizadas entre dos personas distintas), así que acá solo
  * hay una línea diciendo de quién es.
+ *
+ * Sirve igual para un documento de identidad y para un formulario. En el formulario hay
+ * DOS fuentes contra las que se compara (la base y el documento de identidad que vino
+ * en el mismo envío), y por eso cada discrepancia dice de dónde sale el otro valor.
  */
 function _contraste(contraste) {
   const caja = crear('div', 'form-validacion form-validacion--' + contraste.estado);
@@ -748,7 +769,7 @@ function _contraste(contraste) {
   for (const d of contraste.discrepancias || []) {
     const linea = crear('div', 'form-validacion-dif');
     linea.append(crear('b', null, d.campo), ': el documento dice ');
-    linea.append(crear('b', null, `"${d.documento}"`), ' y la base ');
+    linea.append(crear('b', null, `"${d.documento}"`), ` y ${d.fuente || 'la base'} `);
     linea.append(crear('b', null, `"${d.base}"`));
     caja.append(linea);
   }
@@ -1148,11 +1169,7 @@ function conectarEventos() {
     // archivos cargados. Dejarlos era peligroso: son los documentos de otra persona y
     // se habrían analizado contra el ID nuevo sin que nada lo advirtiera.
     if (estado.informe) limpiarResultado();
-    if (estado.archivos.length) {
-      estado.archivos = [];
-      $('archivos').value = '';   // sin esto el input recuerda la seleccion anterior
-      pintarArchivos();
-    }
+    limpiarArchivos();
     actualizarBoton();
   });
 
@@ -1178,6 +1195,8 @@ function conectarEventos() {
   zona.addEventListener('drop', (e) => {
     if (e.dataTransfer && e.dataTransfer.files) agregarArchivos(e.dataTransfer.files);
   });
+
+  $('boton-limpiar-archivos').addEventListener('click', limpiarArchivos);
 
   $('boton-analizar').addEventListener('click', analizar);
   $('boton-salir').addEventListener('click', salir);

@@ -456,6 +456,16 @@ button { font-family: inherit; }
 
 .aviso-icono { flex: none; font-size: 15px; line-height: 1.3; }
 
+/* El botón de vaciar la lista, a la derecha de la franja. `margin-left: auto` lo
+   empuja al extremo sin importar cuánto ocupe el texto, y `align-self` lo centra
+   respecto de las dos líneas del aviso (la franja alinea arriba por el icono). */
+.aviso-accion {
+  flex: none;
+  margin-left: auto;
+  align-self: center;
+  white-space: nowrap;
+}
+
 /* Barra de acción */
 .accion {
   display: flex;
