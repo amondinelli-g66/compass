@@ -729,6 +729,42 @@ function _extraido(extraido, titulo, unidad) {
 }
 
 /**
+ * Texto de una carta explicativa de origen de fondos.
+ *
+ * No tiene campos que mostrar en una grilla (a diferencia de un formulario): es un
+ * escrito libre, así que se presenta como texto corrido, un párrafo por cada salto
+ * de línea doble que trajo la respuesta ya ordenada por el backend. No hay
+ * contraste: no hay nada campo a campo que comparar contra la base.
+ */
+function _carta(carta) {
+  const caja = crear('div', 'form');
+
+  const enc = crear('div', 'form-encabezado');
+  enc.append(crear('span', 'form-titulo', carta.titulo || 'Carta explicativa'));
+  caja.append(enc);
+
+  if (carta.error) {
+    caja.append(crear('div', 'doc-motivo',
+      'No se pudo leer el texto: ' + carta.error));
+    return caja;
+  }
+
+  if (!carta.texto) {
+    caja.append(crear('div', 'form-valor form-valor--vacio',
+      'No se pudo leer texto en este documento.'));
+    return caja;
+  }
+
+  const cuerpo = crear('div', 'carta-texto');
+  for (const parrafo of carta.texto.split('\n\n')) {
+    if (parrafo.trim()) cuerpo.append(crear('p', null, parrafo.trim()));
+  }
+  caja.append(cuerpo);
+
+  return caja;
+}
+
+/**
  * Resultado de verificar los datos impresos contra la MRZ del reverso.
  *
  * La MRZ no se muestra (no le dice nada al analista): se usa para comprobar el resto
@@ -766,9 +802,10 @@ function _contraste(contraste) {
   const caja = crear('div', 'form-validacion form-validacion--' + contraste.estado);
   caja.append(crear('span', 'form-validacion-txt', contraste.texto));
 
+  const sujeto = contraste.sujeto || 'el documento';
   for (const d of contraste.discrepancias || []) {
     const linea = crear('div', 'form-validacion-dif');
-    linea.append(crear('b', null, d.campo), ': el documento dice ');
+    linea.append(crear('b', null, d.campo), `: ${sujeto} dice `);
     linea.append(crear('b', null, `"${d.documento}"`), ` y ${d.fuente || 'la base'} `);
     linea.append(crear('b', null, `"${d.base}"`));
     caja.append(linea);
@@ -894,6 +931,7 @@ function _documentos(analisis) {
   const r = analisis.resumen || {};
   const recuento = [`${r.archivos || 0} archivo(s)`, `${r.documentos || 0} documento(s)`];
   if (r.formularios) recuento.push(`${r.formularios} formulario(s)`);
+  if (r.cartas) recuento.push(`${r.cartas} carta(s) explicativa(s)`);
   if (r.identidades) recuento.push(`${r.identidades} documento(s) de identidad`);
   recuento.push(`${r.a_revision || 0} a revisión`);
   enc.append(crear('span', 'docs-resumen', recuento.join(' · ')));
@@ -983,6 +1021,9 @@ function _documentos(analisis) {
       if (c.formulario) {
         bloque.append(_extraido(c.formulario, 'Datos declarados en el formulario'));
       }
+
+      // Si era una carta explicativa de origen de fondos, su texto.
+      if (c.carta) bloque.append(_carta(c.carta));
 
       tarjeta.append(bloque);
     }

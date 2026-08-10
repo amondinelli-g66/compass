@@ -466,6 +466,18 @@ button { font-family: inherit; }
   white-space: nowrap;
 }
 
+/* Sobrescribe .btn--fantasma (pensado para fondos oscuros): sobre el fondo
+   claro de .aviso el texto blanco quedaba invisible. */
+.aviso-accion.btn--fantasma {
+  background: transparent;
+  color: #7A5320;
+  border: 1px solid rgba(122, 83, 32, .45);
+}
+
+.aviso-accion.btn--fantasma:hover:not(:disabled) {
+  background: rgba(122, 83, 32, .1);
+}
+
 /* Barra de acción */
 .accion {
   display: flex;
@@ -933,6 +945,24 @@ button { font-family: inherit; }
 }
 
 .form-campos { display: grid; gap: 1px; }
+
+/* Texto de una carta explicativa: sin grilla de campos, un parrafo corrido por
+   cada salto de linea doble que ya vino ordenado desde el backend.
+   Selector con DOS clases (".form .carta-texto p") a proposito: dentro del modal
+   de resultado hay una regla generica ".modal p" con la misma especificidad que
+   un simple ".carta-texto p", y al aparecer mas abajo en la hoja le ganaba. */
+.carta-texto { padding: 14px 18px 16px; }
+
+.form .carta-texto p {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--navy);
+  line-height: 1.6;
+  text-align: justify;
+}
+
+.form .carta-texto p:last-child { margin-bottom: 0; }
 
 /* Etiqueta a la izquierda y valor a la derecha: el formulario se lee como una
    lista de preguntas y respuestas, y las etiquetas son preguntas largas. */
