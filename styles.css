@@ -1020,10 +1020,9 @@ button { font-family: inherit; }
 .form-vigencia--vencido { background: #FDE3E1; color: #B3261E; }
 .form-vigencia--por_vencer { background: var(--orange-light); color: #8A3B00; }
 .form-vigencia--vigente { background: var(--green-light); color: var(--green-dark); }
-/* Antigüedad de un comprobante de domicilio: GRIS neutro a propósito. Cuál es el plazo
-   aceptable es una regla de negocio que el sistema no conoce, así que se informa cuánto
-   hace que se emitió sin declarar nada vencido (ver core/domicilio.py). */
-.form-vigencia--informativa { background: #EDEFF4; color: #5A6685; }
+/* La antigüedad de un comprobante de domicilio reusa estos mismos tres estados: el
+   límite son 60 días (ver DIAS_MAX_ANTIGUEDAD en core/domicilio.py), así que un
+   comprobante más viejo sale en rojo igual que un documento vencido. */
 
 /* Verificación contra la MRZ. Discreta a propósito: solo la discrepancia merece
    atención, y va en ámbar (el rojo queda para el documento vencido). */
