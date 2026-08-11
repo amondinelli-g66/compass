@@ -690,9 +690,12 @@ function _extraido(extraido, titulo, unidad) {
   caja.append(enc);
 
   // El vencimiento va arriba de los campos: es lo que hay que ver primero.
-  if (extraido.vigencia) {
-    caja.append(crear('div', 'form-vigencia form-vigencia--' + extraido.vigencia.estado,
-      extraido.vigencia.texto));
+  // `antiguedad` es el equivalente de un comprobante de domicilio (cuánto hace que se
+  // emitió): misma franja, porque responde la misma pregunta de "sigue sirviendo".
+  const banda = extraido.vigencia || extraido.antiguedad;
+  if (banda) {
+    caja.append(crear('div', 'form-vigencia form-vigencia--' + banda.estado,
+      banda.texto));
   }
 
   // Y debajo, si el documento traía MRZ, si concuerda con lo impreso.
@@ -932,6 +935,7 @@ function _documentos(analisis) {
   const recuento = [`${r.archivos || 0} archivo(s)`, `${r.documentos || 0} documento(s)`];
   if (r.formularios) recuento.push(`${r.formularios} formulario(s)`);
   if (r.cartas) recuento.push(`${r.cartas} carta(s) explicativa(s)`);
+  if (r.domicilios) recuento.push(`${r.domicilios} comprobante(s) de domicilio`);
   if (r.identidades) recuento.push(`${r.identidades} documento(s) de identidad`);
   recuento.push(`${r.a_revision || 0} a revisión`);
   enc.append(crear('span', 'docs-resumen', recuento.join(' · ')));
@@ -1028,6 +1032,13 @@ function _documentos(analisis) {
       tarjeta.append(bloque);
     }
 
+    // Los comprobantes de domicilio vienen al nivel del ARCHIVO (uno o varios) y no
+    // de cada clasificación, porque se extraen en una sola llamada por archivo. Se
+    // dibujan con el mismo bloque que los demás esquemas: el backend les da la misma
+    // forma (`core/campos.py`).
+    for (const comprobante of archivo.domicilios || []) {
+      tarjeta.append(_extraido(comprobante, 'Comprobante de domicilio', 'datos leídos'));
+    }
 
     caja.append(tarjeta);
   }

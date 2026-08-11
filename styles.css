@@ -1020,6 +1020,10 @@ button { font-family: inherit; }
 .form-vigencia--vencido { background: #FDE3E1; color: #B3261E; }
 .form-vigencia--por_vencer { background: var(--orange-light); color: #8A3B00; }
 .form-vigencia--vigente { background: var(--green-light); color: var(--green-dark); }
+/* Antigüedad de un comprobante de domicilio: GRIS neutro a propósito. Cuál es el plazo
+   aceptable es una regla de negocio que el sistema no conoce, así que se informa cuánto
+   hace que se emitió sin declarar nada vencido (ver core/domicilio.py). */
+.form-vigencia--informativa { background: #EDEFF4; color: #5A6685; }
 
 /* Verificación contra la MRZ. Discreta a propósito: solo la discrepancia merece
    atención, y va en ámbar (el rojo queda para el documento vencido). */
@@ -1045,6 +1049,14 @@ button { font-family: inherit; }
 .form-validacion--de_otro { background: #FDE3E1; color: #B3261E; }
 .form-validacion--fuera_de_base { background: #E5E9F2; color: #48546F; }
 .form-validacion--sin_registro { background: #EDEFF4; color: #5A6685; }
+/* Estados de un comprobante de DOMICILIO. `otro_titular` va en AZUL informativo y no
+   en naranja a propósito: un comprobante que no está a nombre del cliente NO es
+   inválido —es normal que varias personas vivan en el mismo hogar y que la boleta
+   venga a nombre de una sola—, así que no debe leerse como algo que hay que corregir.
+   Ver `comparar_domicilio` en core/contraste.py. */
+.form-validacion--del_cliente { background: #E5E9F2; color: #48546F; }
+.form-validacion--otro_titular { background: var(--light-blue-light); color: var(--blue); }
+.form-validacion--sin_determinar { background: #EDEFF4; color: #5A6685; }
 .form-validacion-dif { font-size: 11px; }
 
 /* Aviso de vencidos junto al título de la sección, para que no haya que abrir cada
