@@ -1035,6 +1035,12 @@ button { font-family: inherit; }
   gap: 3px;
 }
 
+/* Un contraste puede traer dos afirmaciones distintas en el mismo texto (de quién es
+   el comprobante, y si la dirección coincide), separadas con "\n" desde el backend
+   (ver comparar_domicilio). Sin esto el salto de línea se perdía: un <span> colapsa
+   los saltos de línea igual que cualquier texto HTML. */
+.form-validacion-txt { white-space: pre-line; }
+
 /* El fondo del bloque que las contiene ya es #FAFBFE, así que un gris más claro que
    este no se distingue: la franja parecía texto suelto. Es el mismo peso visual que el
    encabezado celeste del bloque, para que se lea como una franja y no como un párrafo. */
