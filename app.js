@@ -980,21 +980,34 @@ function _documentos(analisis) {
     caja.append(tarjeta);
   }
 
-  for (const archivo of analisis.archivos || []) {
+  // Una tarjeta por DOCUMENTO, no por archivo: un archivo con una boleta y una factura
+  // sale como DOS tarjetas, cada una repitiendo el nombre del archivo y con UN solo
+  // checkbox. Antes las dos compartían tarjeta y la boleta parecía pertenecer a la
+  // factura (ver `agregar_documentos` en core/informe.py).
+  for (const doc of analisis.documentos || []) {
+    const c = doc.clasificacion || {};
     const tarjeta = crear('article', 'doc');
 
-    // El archivo ya no tiene su propio checkbox: agrupa lo que salió de él, pero cada
-    // clasificación y cada comprobante de domicilio de abajo elige por su cuenta si
-    // entra al PDF (pueden salir del mismo archivo y no coincidir en eso).
     const cabecera = crear('div', 'doc-archivo');
-    cabecera.append(crear('span', 'doc-archivo-icono', extension(archivo.archivo || '')));
-    cabecera.append(crear('span', null, archivo.archivo || '—'));
+    cabecera.append(crear('span', 'doc-archivo-icono', extension(doc.archivo || '')));
+    cabecera.append(crear('span', null, doc.archivo || '—'));
+    // El único checkbox del documento va acá, en la cabecera: es la unidad que el
+    // analista marca o desmarca, y así queda claro que manda sobre TODO lo de abajo.
+    if (doc.id) {
+      const nombreDoc = c.subcategoria_legible
+        ? `${c.categoria_legible} › ${c.subcategoria_legible}`
+        : (c.categoria_legible || doc.archivo || 'documento');
+      cabecera.append(_incluir(doc.id, nombreDoc));
+    }
     tarjeta.append(cabecera);
 
-    for (const c of archivo.clasificaciones || []) {
-      const bloque = crear('div',
-        'doc-clasificacion' + (c.revision ? ' doc-clasificacion--revision' : ''));
+    // Un documento sin clasificación es un comprobante que la extracción leyó y el
+    // clasificador no listó aparte: se muestra igual, pero sin la línea de
+    // categoría/confianza, que no le corresponde.
+    const bloque = crear('div',
+      'doc-clasificacion' + (c.revision ? ' doc-clasificacion--revision' : ''));
 
+    if (doc.clasificacion) {
       const titulo = crear('div', 'doc-titulo');
       titulo.append(crear('span', null, c.categoria_legible));
       if (c.subcategoria_legible) {
@@ -1003,15 +1016,6 @@ function _documentos(analisis) {
       }
       if (c.subcategoria_nueva) {
         titulo.append(crear('span', 'doc-nueva', 'Subcategoría nueva'));
-      }
-      // Su propio checkbox: esta clasificación puede entrar al PDF aunque otra del
-      // mismo archivo no lo haga. `.doc-titulo` ya es flex, así que el margen
-      // automático de `.incluir` lo empuja solo al extremo derecho de la línea.
-      if (c.id) {
-        const nombreDoc = c.subcategoria_legible
-          ? `${c.categoria_legible} › ${c.subcategoria_legible}`
-          : c.categoria_legible || 'documento';
-        titulo.append(_incluir(c.id, nombreDoc));
       }
       bloque.append(titulo);
 
@@ -1039,30 +1043,14 @@ function _documentos(analisis) {
 
       // Si era una carta explicativa de origen de fondos, su texto.
       if (c.carta) bloque.append(_carta(c.carta));
-
-      tarjeta.append(bloque);
     }
 
-    // Los comprobantes de domicilio vienen al nivel del ARCHIVO (uno o varios) y no
-    // de cada clasificación, porque se extraen en una sola llamada por archivo. Se
-    // dibujan con el mismo bloque que los demás esquemas: el backend les da la misma
-    // forma (`core/campos.py`).
-    for (const comprobante of archivo.domicilios || []) {
-      // Su propio checkbox, en una barra propia arriba del bloque: mismo patrón que
-      // ya usa el documento de identidad más abajo (`.doc-barra` + `_incluir`), para
-      // que un archivo con dos comprobantes (dos personas del mismo hogar, por
-      // ejemplo) pueda incluir uno y excluir el otro.
-      if (comprobante.id) {
-        const tituloComp = comprobante.titular
-          ? 'Comprobante de domicilio de ' + comprobante.titular
-          : 'Comprobante de domicilio';
-        const barra = crear('div', 'doc-barra');
-        barra.append(_incluir(comprobante.id, tituloComp));
-        tarjeta.append(barra);
-      }
-      tarjeta.append(_extraido(comprobante, 'Comprobante de domicilio', 'datos leídos'));
+    // Si es un comprobante de domicilio, su dirección y a nombre de quién viene.
+    if (doc.domicilio) {
+      bloque.append(_extraido(doc.domicilio, 'Comprobante de domicilio', 'datos leídos'));
     }
 
+    tarjeta.append(bloque);
     caja.append(tarjeta);
   }
 
