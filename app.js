@@ -921,6 +921,111 @@ function _resumenIdentidades(resumen) {
 }
 
 /**
+ * Personas relacionadas con el cliente, UNA vez cada una.
+ *
+ * No es una tarjeta por documento: si tres documentos acreditan el mismo vínculo, la
+ * persona aparece una sola vez y los tres se citan abajo como respaldo (lo consolida
+ * el backend, `core/beneficiarios.py`). El cliente no se lista: la sección responde
+ * quiénes son los OTROS y qué son de él.
+ *
+ * Si dos documentos se contradicen, las dos versiones quedan enfrentadas en ámbar,
+ * igual que un dato dispar en el resumen de identidades. Y si el vínculo solo lo
+ * sostiene un escrito del propio cliente, va el aviso de que describe la relación
+ * pero no la acredita.
+ */
+function _beneficiarios(rel) {
+  const caja = crear('article', 'doc');
+  const bloque = crear('div', 'form');
+
+  const enc = crear('div', 'form-encabezado');
+  const izq = crear('div', 'form-encabezado-txt');
+  izq.append(crear('span', 'form-titulo', rel.titulo));
+  const n = (rel.personas || []).length;
+  const d = rel.documentos || 0;
+  izq.append(crear('span', 'form-titular',
+    `${n === 1 ? '1 persona' : n + ' personas'} · `
+    + `${d === 1 ? '1 documento' : d + ' documentos'}`));
+  enc.append(izq);
+  if (rel.id) enc.append(_incluir(rel.id, rel.titulo));
+  bloque.append(enc);
+
+  bloque.append(crear('div', 'form-validacion form-validacion--' + rel.estado,
+    rel.texto));
+
+  for (const persona of rel.personas || []) {
+    const seccion = crear('div', 'form-seccion');
+    seccion.append(crear('h3', 'form-seccion-titulo', persona.nombre));
+
+    const campos = crear('div', 'form-campos');
+
+    // La relación es el dato que se vino a buscar, así que va primera.
+    const filaRel = crear('div', 'form-campo');
+    filaRel.append(crear('span', 'form-etiqueta', 'Relación con el cliente'));
+    if (persona.relacion) {
+      filaRel.append(crear('span', 'form-valor', persona.relacion));
+    } else if (persona.relacion_dispar) {
+      const fichas = crear('div', 'form-fichas');
+      for (const r of persona.relaciones) {
+        fichas.append(crear('span', 'form-ficha form-ficha--dispar', r));
+      }
+      filaRel.append(fichas);
+    } else {
+      const motivos = persona.sin_relacion_motivos || [];
+      const detalle = motivos[0] ? ` (${motivos[0]})` : '';
+      filaRel.append(crear('span', 'form-valor form-valor--vacio',
+        'No determinada' + detalle));
+    }
+    campos.append(filaRel);
+
+    if ((persona.numeros || []).length) {
+      const fila = crear('div', 'form-campo');
+      fila.append(crear('span', 'form-etiqueta', 'Número de documento'));
+      fila.append(crear('span', 'form-valor', persona.numeros.join(' · ')));
+      campos.append(fila);
+    }
+
+    if ((persona.roles || []).length) {
+      const fila = crear('div', 'form-campo');
+      fila.append(crear('span', 'form-etiqueta', 'Figura como'));
+      fila.append(crear('span', 'form-valor', persona.roles.join(' · ')));
+      campos.append(fila);
+    }
+
+    // Los documentos que respaldan la relación: es lo que la vuelve verificable, y lo
+    // que deja ver que el mismo vínculo está acreditado más de una vez.
+    const filaEv = crear('div', 'form-campo');
+    filaEv.append(crear('span', 'form-etiqueta', 'Acreditada por'));
+    const lista = crear('div', 'form-filas');
+    for (const ev of persona.evidencias || []) {
+      const linea = crear('div', 'form-fila');
+      const celda = crear('span', 'form-celda');
+      celda.append(crear('span', 'form-celda-etiqueta',
+        ev.tipo_documento || 'Documento'));
+      const partes = [];
+      if (ev.fecha) partes.push(ev.fecha);
+      if (ev.archivo) partes.push(ev.archivo);
+      celda.append(crear('span', 'form-valor', partes.join(' · ') || '—'));
+      if (!ev.formal) celda.append(crear('span', 'doc-nueva', 'No formal'));
+      linea.append(celda);
+      lista.append(linea);
+    }
+    filaEv.append(lista);
+    campos.append(filaEv);
+
+    seccion.append(campos);
+
+    // El aviso va al final del bloque de la persona, para que se lea después de ver
+    // de qué documentos depende la relación.
+    if (persona.aviso) seccion.append(crear('div', 'doc-motivo', persona.aviso));
+
+    bloque.append(seccion);
+  }
+
+  caja.append(bloque);
+  return caja;
+}
+
+/**
  * Análisis de documentos, una entrada por documento.
  *
  * Va después de la información de la persona. Cada bloque lleva un checkbox que decide
@@ -936,6 +1041,7 @@ function _documentos(analisis) {
   if (r.formularios) recuento.push(`${r.formularios} formulario(s)`);
   if (r.cartas) recuento.push(`${r.cartas} carta(s) explicativa(s)`);
   if (r.domicilios) recuento.push(`${r.domicilios} comprobante(s) de domicilio`);
+  if (r.beneficiarios) recuento.push(`${r.beneficiarios} persona(s) relacionada(s)`);
   if (r.identidades) recuento.push(`${r.identidades} documento(s) de identidad`);
   recuento.push(`${r.a_revision || 0} a revisión`);
   enc.append(crear('span', 'docs-resumen', recuento.join(' · ')));
@@ -978,6 +1084,12 @@ function _documentos(analisis) {
     }
     tarjeta.append(_extraido(documento, 'Documento de identidad', 'datos leídos'));
     caja.append(tarjeta);
+  }
+
+  // Las personas relacionadas van después de la identidad del cliente: primero quién
+  // es él, después quiénes son los otros y qué son de él.
+  if (analisis.relacion_beneficiarios) {
+    caja.append(_beneficiarios(analisis.relacion_beneficiarios));
   }
 
   // Una tarjeta por DOCUMENTO, no por archivo: un archivo con una boleta y una factura
