@@ -541,15 +541,51 @@ button { font-family: inherit; }
   letter-spacing: -.01em;
 }
 
-/* Bandera circular del país de origen. El aro claro la despega del fondo navy:
-   varias banderas tienen borde azul oscuro y se fundirían con la tarjeta. */
-.identidad-bandera {
+/* Columna de banderas: una por documento aprobado del cliente.
+ *
+ * Ancho FIJO en el diámetro de una bandera (62px), sea una o sean cinco: así el
+ * bloque de texto de al lado nunca se corre según cuántos países tenga el cliente.
+ *
+ * El alto es el que el bloque de texto YA ocupa dentro de la tarjeta (medido: 86px,
+ * con la tarjeta en 142px y 28px de padding arriba y abajo). Fijarlo acá es lo que
+ * mantiene la tarjeta azul del mismo tamaño que antes: las banderas se encogen y se
+ * solapan para caber en ese alto en vez de estirar la tarjeta hacia abajo.
+ *
+ * El tamaño sale de una fórmula y no de un caso por cantidad: con `k` = 0,75 (la
+ * fracción visible de cada bandera tapada), N banderas ocupan tam*(1+(N-1)*k), así que
+ * tam = alto/(1+(N-1)*k) las deja siempre justo en el alto disponible. `min()` la
+ * limita a 62px para que una sola no se agrande. Medido sobre la base, el máximo real
+ * son 4 documentos aprobados, pero la fórmula aguanta cualquier cantidad. */
+.identidad-banderas {
+  --alto: 86px;
+  --k: .75;
+  --n: 1;
+  --tam: min(62px, calc(var(--alto) / (1 + (var(--n) - 1) * var(--k))));
   width: 62px;
-  height: 62px;
+  height: var(--alto);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* El aro claro despega la bandera del fondo navy: varias banderas tienen borde azul
+   oscuro y se fundirían con la tarjeta. Con el apilado, además, separa una de otra. */
+.identidad-bandera {
+  width: var(--tam, 62px);
+  height: var(--tam, 62px);
   flex: none;
   border-radius: 50%;
   display: block;
+  object-fit: cover;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .92), 0 2px 10px rgba(0, 0, 0, .28);
+}
+
+/* Cada bandera tapa parte de la anterior. La de arriba es la más antigua: queda
+   entera y las siguientes se montan sobre ella. */
+.identidad-bandera + .identidad-bandera {
+  margin-top: calc(var(--tam) * (var(--k) - 1));
 }
 
 .identidad-textos { flex: 1; min-width: 220px; }

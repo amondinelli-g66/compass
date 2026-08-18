@@ -551,21 +551,34 @@ function cerrarModalResultado() {
 function _identidad(enc) {
   const caja = crear('div', 'identidad');
 
-  // Bandera circular del país de origen. Si no hay archivo para ese código (o el
-  // país viene vacío), se cae a las iniciales.
-  if (enc.pais_codigo) {
-    const bandera = document.createElement('img');
-    bandera.className = 'identidad-bandera';
-    bandera.src = 'banderas/' + enc.pais_codigo + '.svg';
-    bandera.alt = enc.pais || enc.pais_codigo;
-    bandera.title = enc.pais || '';
-    bandera.width = 62;
-    bandera.height = 62;
-    bandera.addEventListener('error', () => {
-      bandera.replaceWith(crear('div', 'identidad-avatar', enc.iniciales));
-    });
-    caja.append(bandera);
+  // Una bandera por cada documento APROBADO, de la más antigua a la más nueva: son
+  // los países donde la empresa le abrió cuenta al cliente (lo arma el backend, ver
+  // `_banderas_de_documentos`). No es el país de origen, que es otro dato y vive en el
+  // detalle de la persona.
+  //
+  // Van apiladas en UNA columna del ancho de una bandera, siempre el mismo sin importar
+  // cuántas sean; se encogen y se solapan para caber en el alto que el bloque de texto
+  // ya ocupa, así la tarjeta azul no cambia de tamaño (ver `.identidad-banderas`).
+  const paises = enc.banderas_paises || [];
+  if (paises.length) {
+    const columna = crear('div', 'identidad-banderas');
+    // El CSS calcula el tamaño y el solape a partir de cuántas son.
+    columna.style.setProperty('--n', paises.length);
+    for (const p of paises) {
+      const bandera = document.createElement('img');
+      bandera.className = 'identidad-bandera';
+      bandera.src = 'banderas/' + p.codigo + '.svg';
+      bandera.alt = p.pais || p.codigo;
+      // Al pasar el mouse, de qué documento salió cada una.
+      bandera.title = [p.pais || p.codigo, p.tipo, p.validado && 'validado ' + p.validado]
+        .filter(Boolean).join(' · ');
+      // Si falta el archivo de esa bandera se quita esa sola, sin romper el resto.
+      bandera.addEventListener('error', () => bandera.remove());
+      columna.append(bandera);
+    }
+    caja.append(columna);
   } else {
+    // Sin documentos aprobados no hay ninguna bandera que mostrar: las iniciales.
     caja.append(crear('div', 'identidad-avatar', enc.iniciales));
   }
 
