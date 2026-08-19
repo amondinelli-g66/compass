@@ -551,19 +551,29 @@ function cerrarModalResultado() {
 function _identidad(enc) {
   const caja = crear('div', 'identidad');
 
+  // El texto va primero y con flex:1 (`.identidad-textos`), así ocupa todo el
+  // espacio que las banderas no usan y las empuja contra el borde derecho de la
+  // caja, se llamen una o varias.
+  const textos = crear('div', 'identidad-textos');
+  textos.append(crear('div', 'identidad-nombre', enc.nombre));
+  if (enc.subtitulo) textos.append(crear('div', 'identidad-sub', enc.subtitulo));
+
+  const id = crear('div', 'identidad-id');
+  id.append('ID DE CLIENTE', crear('b', null, enc.id));
+  textos.append(id);
+
+  caja.append(textos);
+
   // Una bandera por cada documento APROBADO, de la más antigua a la más nueva: son
   // los países donde la empresa le abrió cuenta al cliente (lo arma el backend, ver
   // `_banderas_de_documentos`). No es el país de origen, que es otro dato y vive en el
   // detalle de la persona.
   //
-  // Van apiladas en UNA columna del ancho de una bandera, siempre el mismo sin importar
-  // cuántas sean; se encogen y se solapan para caber en el alto que el bloque de texto
-  // ya ocupa, así la tarjeta azul no cambia de tamaño (ver `.identidad-banderas`).
+  // Van en fila de izquierda a derecha, todas del mismo tamaño sin importar cuántas
+  // sean (`.identidad-banderas`): nada de apilarlas ni encogerlas.
   const paises = enc.banderas_paises || [];
   if (paises.length) {
-    const columna = crear('div', 'identidad-banderas');
-    // El CSS calcula el tamaño y el solape a partir de cuántas son.
-    columna.style.setProperty('--n', paises.length);
+    const fila = crear('div', 'identidad-banderas');
     for (const p of paises) {
       const bandera = document.createElement('img');
       bandera.className = 'identidad-bandera';
@@ -574,23 +584,14 @@ function _identidad(enc) {
         .filter(Boolean).join(' · ');
       // Si falta el archivo de esa bandera se quita esa sola, sin romper el resto.
       bandera.addEventListener('error', () => bandera.remove());
-      columna.append(bandera);
+      fila.append(bandera);
     }
-    caja.append(columna);
+    caja.append(fila);
   } else {
     // Sin documentos aprobados no hay ninguna bandera que mostrar: las iniciales.
     caja.append(crear('div', 'identidad-avatar', enc.iniciales));
   }
 
-  const textos = crear('div', 'identidad-textos');
-  textos.append(crear('div', 'identidad-nombre', enc.nombre));
-  if (enc.subtitulo) textos.append(crear('div', 'identidad-sub', enc.subtitulo));
-
-  const id = crear('div', 'identidad-id');
-  id.append('ID DE CLIENTE', crear('b', null, enc.id));
-  textos.append(id);
-
-  caja.append(textos);
   return caja;
 }
 
