@@ -1081,6 +1081,108 @@ button { font-family: inherit; }
 
 /* Aviso de vencidos junto al título de la sección, para que no haya que abrir cada
    tarjeta para enterarse. */
+/* El total acreditado por los comprobantes de soporte, una ficha por moneda. Ocupa la
+   fila completa del encabezado (flex-basis 100%) porque puede haber varias monedas y
+   partirlas en dos lineas al lado del recuento las volvia ilegibles. Ver
+   `totales_por_moneda` en core/soportes.py: no se convierte de moneda, asi que la
+   moneda es parte del dato y va pegada a la cifra. */
+.docs-totales {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--light-gray);
+}
+
+.docs-totales-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7A85A3;
+}
+
+.docs-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--green-light);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+.docs-total b {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.docs-total span {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4E7A6C;
+}
+
+/* Un monto que no se pudo interpretar como numero queda FUERA de la suma. Se avisa en
+   ambar, no en rojo: no es un error del documento, es un dato que el total no incluye. */
+.docs-total-aviso {
+  background: var(--orange-light);
+  color: #8A5A00;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* Lo acreditado contra lo declarado en el formulario KYC. Ocupa la fila completa del
+   encabezado, como los totales: es la conclusion del analisis de la categoria y no un
+   dato mas. Los tres estados se pintan en tonos INFORMATIVOS -ninguno en rojo-, porque
+   que falte un respaldo no es un error del cliente (ver `comparar_respaldo` en
+   core/contraste.py). */
+.docs-respaldo {
+  flex-basis: 100%;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radio-sm);
+  border-left: 4px solid var(--gray);
+}
+
+.docs-respaldo--respaldado { background: var(--green-light); border-left-color: var(--green-dark); }
+.docs-respaldo--parcial { background: var(--light-blue-light); border-left-color: var(--blue); }
+.docs-respaldo--sin_respaldo { background: var(--orange-light); border-left-color: var(--orange); }
+.docs-respaldo--no_comparable { background: var(--light-gray); border-left-color: var(--gray); }
+
+.docs-respaldo-titulo {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy);
+  opacity: .65;
+  margin-bottom: 4px;
+}
+
+.docs-respaldo-txt {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--navy);
+  line-height: 1.45;
+}
+
+/* Con que se respalda cada origen declarado. Sangrado para que se lea como detalle de
+   la frase de arriba y no como una afirmacion suelta. */
+.docs-respaldo-par {
+  font-size: 12px;
+  color: var(--navy);
+  opacity: .8;
+  margin: 4px 0 0 12px;
+}
+
 .docs-vencidos {
   background: #FDE3E1;
   color: #B3261E;

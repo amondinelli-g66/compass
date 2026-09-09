@@ -579,8 +579,11 @@ function _identidad(enc) {
       bandera.className = 'identidad-bandera';
       bandera.src = 'banderas/' + p.codigo + '.svg';
       bandera.alt = p.pais || p.codigo;
-      // Al pasar el mouse, de qué documento salió cada una.
-      bandera.title = [p.pais || p.codigo, p.tipo, p.validado && 'validado ' + p.validado]
+      // Al pasar el mouse, de qué documento salió cada una. Si el documento está
+      // PENDIENTE se dice: el país cuenta igual, pero la empresa no lo confirmó.
+      bandera.title = [p.pais || p.codigo, p.tipo,
+        p.aprobado === false ? 'pendiente de revisión'
+          : p.validado && 'validado ' + p.validado]
         .filter(Boolean).join(' · ');
       // Si falta el archivo de esa bandera se quita esa sola, sin romper el resto.
       bandera.addEventListener('error', () => bandera.remove());
@@ -588,7 +591,7 @@ function _identidad(enc) {
     }
     caja.append(fila);
   } else {
-    // Sin documentos aprobados no hay ninguna bandera que mostrar: las iniciales.
+    // Sin documentos (ni aprobados ni pendientes) no hay bandera: las iniciales.
     caja.append(crear('div', 'identidad-avatar', enc.iniciales));
   }
 
@@ -1055,10 +1058,71 @@ function _documentos(analisis) {
   if (r.formularios) recuento.push(`${r.formularios} formulario(s)`);
   if (r.cartas) recuento.push(`${r.cartas} carta(s) explicativa(s)`);
   if (r.domicilios) recuento.push(`${r.domicilios} comprobante(s) de domicilio`);
+  if (r.soportes) recuento.push(`${r.soportes} comprobante(s) de soporte`);
   if (r.beneficiarios) recuento.push(`${r.beneficiarios} persona(s) relacionada(s)`);
   if (r.identidades) recuento.push(`${r.identidades} documento(s) de identidad`);
   recuento.push(`${r.a_revision || 0} a revisión`);
   enc.append(crear('span', 'docs-resumen', recuento.join(' · ')));
+  // Cuanto acreditan los comprobantes de soporte, sumado POR MONEDA. Va acá arriba y
+  // no dentro de cada tarjeta porque es la lectura del CONJUNTO: el promedio de esta
+  // categoría es de casi cuatro comprobantes por petición, y una serie de doce
+  // liquidaciones del mismo empleo se lee como un total, no como doce tarjetas.
+  //
+  // No se convierte de moneda a propósito (ver core/soportes.py): "USD 27.000 + CLP
+  // 8.400.000" es exacto, y una sola cifra sería una estimación disfrazada de dato.
+  const totales = analisis.totales_soporte || [];
+  if (totales.length) {
+    const linea = crear('div', 'docs-totales');
+    linea.append(crear('span', 'docs-totales-titulo', 'Acreditado como ingreso'));
+    for (const t of totales) {
+      const ficha = crear('span', 'docs-total');
+      ficha.append(crear('b', null, `${t.moneda} ${t.total_legible}`));
+      ficha.append(crear('span', null,
+        t.documentos === 1
+          ? `1 ${t.naturaleza.toLowerCase()}`
+          : `${t.documentos} \u00d7 ${t.naturaleza.toLowerCase()}`));
+      linea.append(ficha);
+    }
+    // Un monto que no se pudo interpretar como número no entra en la suma, y hay que
+    // decirlo: un total que parece completo cuando no lo está es peor que no darlo.
+    const sin = totales[0].sin_interpretar || 0;
+    if (sin) {
+      linea.append(crear('span', 'docs-total-aviso',
+        sin === 1
+          ? '1 comprobante con un monto que no se pudo sumar'
+          : `${sin} comprobantes con montos que no se pudieron sumar`));
+    }
+    enc.append(linea);
+  }
+
+  // Lo que los comprobantes ACREDITAN contra lo que el cliente DECLARÓ en su
+  // formulario KYC. Es la conclusión del análisis de esta categoría, así que va arriba
+  // del listado y no dentro de una tarjeta: cruza dos categorías que llegan en
+  // archivos distintos (ver `comparar_respaldo` en core/contraste.py).
+  //
+  // Informativo, sin alertas: que falte respaldo de algo declarado puede ser
+  // simplemente que el cliente todavía no lo mandó.
+  const respaldo = analisis.respaldo_declarado;
+  if (respaldo) {
+    const franja = crear('div', 'docs-respaldo docs-respaldo--' + respaldo.estado);
+    franja.append(crear('span', 'docs-respaldo-titulo', 'Respaldo de lo declarado'));
+    // El texto trae saltos de línea (lo que falta y lo que sobra van en líneas
+    // aparte): cada uno es su propio párrafo, igual que en el contraste de domicilio.
+    for (const parrafo of (respaldo.texto || '').split('\n')) {
+      if (parrafo) franja.append(crear('div', 'docs-respaldo-txt', parrafo));
+    }
+    // Con qué se respalda cada origen declarado: sin esto, "tiene respaldo" no dice
+    // contra qué comprobante.
+    for (const r of respaldo.respaldados || []) {
+      const linea = crear('div', 'docs-respaldo-par');
+      linea.append(crear('b', null, r.declarado));
+      linea.append(r.con && r.con !== r.declarado
+        ? ` ← respaldado con: ${r.con}`
+        : ' ← respaldado');
+      franja.append(linea);
+    }
+    enc.append(franja);
+  }
   // Un documento de identidad vencido se avisa acá arriba y no solo dentro de su
   // tarjeta: es lo que hace que el analista no siga adelante sin verlo.
   if (r.identidades_vencidas) {
@@ -1174,6 +1238,14 @@ function _documentos(analisis) {
     // Si es un comprobante de domicilio, su dirección y a nombre de quién viene.
     if (doc.domicilio) {
       bloque.append(_extraido(doc.domicilio, 'Comprobante de domicilio', 'datos leídos'));
+    }
+
+    // Si es un comprobante de soporte, qué acredita, por cuánto y entre quiénes. Usa el
+    // mismo renderizador genérico: el esquema de `core.soportes` esconde por su cuenta
+    // los campos que no corresponden al tipo de documento (ver `depende_de`), así que
+    // acá no hay nada que decidir.
+    if (doc.soporte) {
+      bloque.append(_extraido(doc.soporte, 'Comprobante de soporte', 'datos leídos'));
     }
 
     tarjeta.append(bloque);
