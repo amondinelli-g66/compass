@@ -179,6 +179,13 @@
             Los documentos se analizan en memoria y se descartan al terminar.
             No se almacenan en ningun repositorio.
           </span>
+          <!-- Vaciar la lista de una vez. Va acá, en la misma franja que habla de que
+               los documentos no se guardan, porque es donde el analista lo busca: la
+               "×" de cada archivo sirve para corregir una carga, este botón para
+               empezar de nuevo con otro cliente. Arranca oculto (no hay nada que
+               borrar) y `pintarArchivos()` lo muestra cuando hay archivos. -->
+          <button class="btn btn--fantasma aviso-accion oculto" id="boton-limpiar-archivos"
+                  type="button">Quitar documentos</button>
         </div>
       </div>
     </section>

@@ -456,6 +456,28 @@ button { font-family: inherit; }
 
 .aviso-icono { flex: none; font-size: 15px; line-height: 1.3; }
 
+/* El botón de vaciar la lista, a la derecha de la franja. `margin-left: auto` lo
+   empuja al extremo sin importar cuánto ocupe el texto, y `align-self` lo centra
+   respecto de las dos líneas del aviso (la franja alinea arriba por el icono). */
+.aviso-accion {
+  flex: none;
+  margin-left: auto;
+  align-self: center;
+  white-space: nowrap;
+}
+
+/* Sobrescribe .btn--fantasma (pensado para fondos oscuros): sobre el fondo
+   claro de .aviso el texto blanco quedaba invisible. */
+.aviso-accion.btn--fantasma {
+  background: transparent;
+  color: #7A5320;
+  border: 1px solid rgba(122, 83, 32, .45);
+}
+
+.aviso-accion.btn--fantasma:hover:not(:disabled) {
+  background: rgba(122, 83, 32, .1);
+}
+
 /* Barra de acción */
 .accion {
   display: flex;
@@ -519,15 +541,30 @@ button { font-family: inherit; }
   letter-spacing: -.01em;
 }
 
-/* Bandera circular del país de origen. El aro claro la despega del fondo navy:
-   varias banderas tienen borde azul oscuro y se fundirían con la tarjeta. */
+/* Fila de banderas: una por documento aprobado del cliente, de izquierda a derecha
+ * (la más antigua primero). Todas del mismo tamaño sin importar cuántas sean -sin
+ * fórmula de encogido-, porque ya no comparten alto con nada: `.identidad-textos`
+ * de al lado tiene flex:1 y absorbe el espacio que sobra, así que esta fila (con
+ * flex:none) queda siempre pegada contra el borde derecho de la tarjeta. */
+.identidad-banderas {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+/* El aro claro despega la bandera del fondo navy: varias banderas tienen borde azul
+ * oscuro y se fundirían con la tarjeta. Fino a propósito -antes tapaba demasiado
+ * bandera cuando iban apiladas- para que se vean más grandes y nítidas ahora que
+ * van en fila. */
 .identidad-bandera {
-  width: 62px;
-  height: 62px;
+  width: 76px;
+  height: 76px;
   flex: none;
   border-radius: 50%;
   display: block;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, .92), 0 2px 10px rgba(0, 0, 0, .28);
+  object-fit: cover;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .92), 0 2px 10px rgba(0, 0, 0, .28);
 }
 
 .identidad-textos { flex: 1; min-width: 220px; }
@@ -924,6 +961,24 @@ button { font-family: inherit; }
 
 .form-campos { display: grid; gap: 1px; }
 
+/* Texto de una carta explicativa: sin grilla de campos, un parrafo corrido por
+   cada salto de linea doble que ya vino ordenado desde el backend.
+   Selector con DOS clases (".form .carta-texto p") a proposito: dentro del modal
+   de resultado hay una regla generica ".modal p" con la misma especificidad que
+   un simple ".carta-texto p", y al aparecer mas abajo en la hoja le ganaba. */
+.carta-texto { padding: 14px 18px 16px; }
+
+.form .carta-texto p {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--navy);
+  line-height: 1.6;
+  text-align: justify;
+}
+
+.form .carta-texto p:last-child { margin-bottom: 0; }
+
 /* Etiqueta a la izquierda y valor a la derecha: el formulario se lee como una
    lista de preguntas y respuestas, y las etiquetas son preguntas largas. */
 .form-campo {
@@ -980,6 +1035,9 @@ button { font-family: inherit; }
 .form-vigencia--vencido { background: #FDE3E1; color: #B3261E; }
 .form-vigencia--por_vencer { background: var(--orange-light); color: #8A3B00; }
 .form-vigencia--vigente { background: var(--green-light); color: var(--green-dark); }
+/* La antigüedad de un comprobante de domicilio reusa estos mismos tres estados: el
+   límite son 60 días (ver DIAS_MAX_ANTIGUEDAD en core/domicilio.py), así que un
+   comprobante más viejo sale en rojo igual que un documento vencido. */
 
 /* Verificación contra la MRZ. Discreta a propósito: solo la discrepancia merece
    atención, y va en ámbar (el rojo queda para el documento vencido). */
@@ -991,6 +1049,12 @@ button { font-family: inherit; }
   display: grid;
   gap: 3px;
 }
+
+/* Un contraste puede traer dos afirmaciones distintas en el mismo texto (de quién es
+   el comprobante, y si la dirección coincide), separadas con "\n" desde el backend
+   (ver comparar_domicilio). Sin esto el salto de línea se perdía: un <span> colapsa
+   los saltos de línea igual que cualquier texto HTML. */
+.form-validacion-txt { white-space: pre-line; }
 
 /* El fondo del bloque que las contiene ya es #FAFBFE, así que un gris más claro que
    este no se distingue: la franja parecía texto suelto. Es el mismo peso visual que el
@@ -1005,10 +1069,120 @@ button { font-family: inherit; }
 .form-validacion--de_otro { background: #FDE3E1; color: #B3261E; }
 .form-validacion--fuera_de_base { background: #E5E9F2; color: #48546F; }
 .form-validacion--sin_registro { background: #EDEFF4; color: #5A6685; }
+/* Estados de un comprobante de DOMICILIO. `otro_titular` va en AZUL informativo y no
+   en naranja a propósito: un comprobante que no está a nombre del cliente NO es
+   inválido —es normal que varias personas vivan en el mismo hogar y que la boleta
+   venga a nombre de una sola—, así que no debe leerse como algo que hay que corregir.
+   Ver `comparar_domicilio` en core/contraste.py. */
+.form-validacion--del_cliente { background: #E5E9F2; color: #48546F; }
+.form-validacion--otro_titular { background: var(--light-blue-light); color: var(--blue); }
+.form-validacion--sin_determinar { background: #EDEFF4; color: #5A6685; }
 .form-validacion-dif { font-size: 11px; }
 
 /* Aviso de vencidos junto al título de la sección, para que no haya que abrir cada
    tarjeta para enterarse. */
+/* El total acreditado por los comprobantes de soporte, una ficha por moneda. Ocupa la
+   fila completa del encabezado (flex-basis 100%) porque puede haber varias monedas y
+   partirlas en dos lineas al lado del recuento las volvia ilegibles. Ver
+   `totales_por_moneda` en core/soportes.py: no se convierte de moneda, asi que la
+   moneda es parte del dato y va pegada a la cifra. */
+.docs-totales {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--light-gray);
+}
+
+.docs-totales-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7A85A3;
+}
+
+.docs-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--green-light);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+.docs-total b {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.docs-total span {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4E7A6C;
+}
+
+/* Un monto que no se pudo interpretar como numero queda FUERA de la suma. Se avisa en
+   ambar, no en rojo: no es un error del documento, es un dato que el total no incluye. */
+.docs-total-aviso {
+  background: var(--orange-light);
+  color: #8A5A00;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* Lo acreditado contra lo declarado en el formulario KYC. Ocupa la fila completa del
+   encabezado, como los totales: es la conclusion del analisis de la categoria y no un
+   dato mas. Los tres estados se pintan en tonos INFORMATIVOS -ninguno en rojo-, porque
+   que falte un respaldo no es un error del cliente (ver `comparar_respaldo` en
+   core/contraste.py). */
+.docs-respaldo {
+  flex-basis: 100%;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radio-sm);
+  border-left: 4px solid var(--gray);
+}
+
+.docs-respaldo--respaldado { background: var(--green-light); border-left-color: var(--green-dark); }
+.docs-respaldo--parcial { background: var(--light-blue-light); border-left-color: var(--blue); }
+.docs-respaldo--sin_respaldo { background: var(--orange-light); border-left-color: var(--orange); }
+.docs-respaldo--no_comparable { background: var(--light-gray); border-left-color: var(--gray); }
+
+.docs-respaldo-titulo {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy);
+  opacity: .65;
+  margin-bottom: 4px;
+}
+
+.docs-respaldo-txt {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--navy);
+  line-height: 1.45;
+}
+
+/* Con que se respalda cada origen declarado. Sangrado para que se lea como detalle de
+   la frase de arriba y no como una afirmacion suelta. */
+.docs-respaldo-par {
+  font-size: 12px;
+  color: var(--navy);
+  opacity: .8;
+  margin: 4px 0 0 12px;
+}
+
 .docs-vencidos {
   background: #FDE3E1;
   color: #B3261E;

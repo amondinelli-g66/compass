@@ -412,9 +412,26 @@ function quitarArchivo(indice) {
   pintarArchivos();
 }
 
+/**
+ * Vacía la lista de documentos cargados.
+ *
+ * Hay que limpiar TAMBIÉN el value del input: si no, el navegador recuerda la
+ * selección anterior y volver a elegir el mismo archivo no dispara `change`, así que
+ * el analista lo elige y no pasa nada.
+ */
+function limpiarArchivos() {
+  if (!estado.archivos.length) return;
+  estado.archivos = [];
+  $('archivos').value = '';
+  pintarArchivos();
+}
+
 function pintarArchivos() {
   const ul = $('lista-archivos');
   ul.innerHTML = '';
+
+  // El botón de vaciar solo tiene sentido si hay algo cargado.
+  mostrar($('boton-limpiar-archivos'), estado.archivos.length > 0);
 
   estado.archivos.forEach((f, i) => {
     const li = document.createElement('li');
@@ -534,24 +551,9 @@ function cerrarModalResultado() {
 function _identidad(enc) {
   const caja = crear('div', 'identidad');
 
-  // Bandera circular del país de origen. Si no hay archivo para ese código (o el
-  // país viene vacío), se cae a las iniciales.
-  if (enc.pais_codigo) {
-    const bandera = document.createElement('img');
-    bandera.className = 'identidad-bandera';
-    bandera.src = 'banderas/' + enc.pais_codigo + '.svg';
-    bandera.alt = enc.pais || enc.pais_codigo;
-    bandera.title = enc.pais || '';
-    bandera.width = 62;
-    bandera.height = 62;
-    bandera.addEventListener('error', () => {
-      bandera.replaceWith(crear('div', 'identidad-avatar', enc.iniciales));
-    });
-    caja.append(bandera);
-  } else {
-    caja.append(crear('div', 'identidad-avatar', enc.iniciales));
-  }
-
+  // El texto va primero y con flex:1 (`.identidad-textos`), así ocupa todo el
+  // espacio que las banderas no usan y las empuja contra el borde derecho de la
+  // caja, se llamen una o varias.
   const textos = crear('div', 'identidad-textos');
   textos.append(crear('div', 'identidad-nombre', enc.nombre));
   if (enc.subtitulo) textos.append(crear('div', 'identidad-sub', enc.subtitulo));
@@ -561,6 +563,38 @@ function _identidad(enc) {
   textos.append(id);
 
   caja.append(textos);
+
+  // Una bandera por cada documento APROBADO, de la más antigua a la más nueva: son
+  // los países donde la empresa le abrió cuenta al cliente (lo arma el backend, ver
+  // `_banderas_de_documentos`). No es el país de origen, que es otro dato y vive en el
+  // detalle de la persona.
+  //
+  // Van en fila de izquierda a derecha, todas del mismo tamaño sin importar cuántas
+  // sean (`.identidad-banderas`): nada de apilarlas ni encogerlas.
+  const paises = enc.banderas_paises || [];
+  if (paises.length) {
+    const fila = crear('div', 'identidad-banderas');
+    for (const p of paises) {
+      const bandera = document.createElement('img');
+      bandera.className = 'identidad-bandera';
+      bandera.src = 'banderas/' + p.codigo + '.svg';
+      bandera.alt = p.pais || p.codigo;
+      // Al pasar el mouse, de qué documento salió cada una. Si el documento está
+      // PENDIENTE se dice: el país cuenta igual, pero la empresa no lo confirmó.
+      bandera.title = [p.pais || p.codigo, p.tipo,
+        p.aprobado === false ? 'pendiente de revisión'
+          : p.validado && 'validado ' + p.validado]
+        .filter(Boolean).join(' · ');
+      // Si falta el archivo de esa bandera se quita esa sola, sin romper el resto.
+      bandera.addEventListener('error', () => bandera.remove());
+      fila.append(bandera);
+    }
+    caja.append(fila);
+  } else {
+    // Sin documentos (ni aprobados ni pendientes) no hay bandera: las iniciales.
+    caja.append(crear('div', 'identidad-avatar', enc.iniciales));
+  }
+
   return caja;
 }
 
@@ -673,9 +707,12 @@ function _extraido(extraido, titulo, unidad) {
   caja.append(enc);
 
   // El vencimiento va arriba de los campos: es lo que hay que ver primero.
-  if (extraido.vigencia) {
-    caja.append(crear('div', 'form-vigencia form-vigencia--' + extraido.vigencia.estado,
-      extraido.vigencia.texto));
+  // `antiguedad` es el equivalente de un comprobante de domicilio (cuánto hace que se
+  // emitió): misma franja, porque responde la misma pregunta de "sigue sirviendo".
+  const banda = extraido.vigencia || extraido.antiguedad;
+  if (banda) {
+    caja.append(crear('div', 'form-vigencia form-vigencia--' + banda.estado,
+      banda.texto));
   }
 
   // Y debajo, si el documento traía MRZ, si concuerda con lo impreso.
@@ -712,6 +749,42 @@ function _extraido(extraido, titulo, unidad) {
 }
 
 /**
+ * Texto de una carta explicativa de origen de fondos.
+ *
+ * No tiene campos que mostrar en una grilla (a diferencia de un formulario): es un
+ * escrito libre, así que se presenta como texto corrido, un párrafo por cada salto
+ * de línea doble que trajo la respuesta ya ordenada por el backend. No hay
+ * contraste: no hay nada campo a campo que comparar contra la base.
+ */
+function _carta(carta) {
+  const caja = crear('div', 'form');
+
+  const enc = crear('div', 'form-encabezado');
+  enc.append(crear('span', 'form-titulo', carta.titulo || 'Carta explicativa'));
+  caja.append(enc);
+
+  if (carta.error) {
+    caja.append(crear('div', 'doc-motivo',
+      'No se pudo leer el texto: ' + carta.error));
+    return caja;
+  }
+
+  if (!carta.texto) {
+    caja.append(crear('div', 'form-valor form-valor--vacio',
+      'No se pudo leer texto en este documento.'));
+    return caja;
+  }
+
+  const cuerpo = crear('div', 'carta-texto');
+  for (const parrafo of carta.texto.split('\n\n')) {
+    if (parrafo.trim()) cuerpo.append(crear('p', null, parrafo.trim()));
+  }
+  caja.append(cuerpo);
+
+  return caja;
+}
+
+/**
  * Resultado de verificar los datos impresos contra la MRZ del reverso.
  *
  * La MRZ no se muestra (no le dice nada al analista): se usa para comprobar el resto
@@ -740,15 +813,20 @@ function _validacion(validacion) {
  * Si el documento NO es del cliente en análisis, el backend no compara campo por campo
  * (serían discrepancias garantizadas entre dos personas distintas), así que acá solo
  * hay una línea diciendo de quién es.
+ *
+ * Sirve igual para un documento de identidad y para un formulario. En el formulario hay
+ * DOS fuentes contra las que se compara (la base y el documento de identidad que vino
+ * en el mismo envío), y por eso cada discrepancia dice de dónde sale el otro valor.
  */
 function _contraste(contraste) {
   const caja = crear('div', 'form-validacion form-validacion--' + contraste.estado);
   caja.append(crear('span', 'form-validacion-txt', contraste.texto));
 
+  const sujeto = contraste.sujeto || 'el documento';
   for (const d of contraste.discrepancias || []) {
     const linea = crear('div', 'form-validacion-dif');
-    linea.append(crear('b', null, d.campo), ': el documento dice ');
-    linea.append(crear('b', null, `"${d.documento}"`), ' y la base ');
+    linea.append(crear('b', null, d.campo), `: ${sujeto} dice `);
+    linea.append(crear('b', null, `"${d.documento}"`), ` y ${d.fuente || 'la base'} `);
     linea.append(crear('b', null, `"${d.base}"`));
     caja.append(linea);
   }
@@ -860,6 +938,111 @@ function _resumenIdentidades(resumen) {
 }
 
 /**
+ * Personas relacionadas con el cliente, UNA vez cada una.
+ *
+ * No es una tarjeta por documento: si tres documentos acreditan el mismo vínculo, la
+ * persona aparece una sola vez y los tres se citan abajo como respaldo (lo consolida
+ * el backend, `core/beneficiarios.py`). El cliente no se lista: la sección responde
+ * quiénes son los OTROS y qué son de él.
+ *
+ * Si dos documentos se contradicen, las dos versiones quedan enfrentadas en ámbar,
+ * igual que un dato dispar en el resumen de identidades. Y si el vínculo solo lo
+ * sostiene un escrito del propio cliente, va el aviso de que describe la relación
+ * pero no la acredita.
+ */
+function _beneficiarios(rel) {
+  const caja = crear('article', 'doc');
+  const bloque = crear('div', 'form');
+
+  const enc = crear('div', 'form-encabezado');
+  const izq = crear('div', 'form-encabezado-txt');
+  izq.append(crear('span', 'form-titulo', rel.titulo));
+  const n = (rel.personas || []).length;
+  const d = rel.documentos || 0;
+  izq.append(crear('span', 'form-titular',
+    `${n === 1 ? '1 persona' : n + ' personas'} · `
+    + `${d === 1 ? '1 documento' : d + ' documentos'}`));
+  enc.append(izq);
+  if (rel.id) enc.append(_incluir(rel.id, rel.titulo));
+  bloque.append(enc);
+
+  bloque.append(crear('div', 'form-validacion form-validacion--' + rel.estado,
+    rel.texto));
+
+  for (const persona of rel.personas || []) {
+    const seccion = crear('div', 'form-seccion');
+    seccion.append(crear('h3', 'form-seccion-titulo', persona.nombre));
+
+    const campos = crear('div', 'form-campos');
+
+    // La relación es el dato que se vino a buscar, así que va primera.
+    const filaRel = crear('div', 'form-campo');
+    filaRel.append(crear('span', 'form-etiqueta', 'Relación con el cliente'));
+    if (persona.relacion) {
+      filaRel.append(crear('span', 'form-valor', persona.relacion));
+    } else if (persona.relacion_dispar) {
+      const fichas = crear('div', 'form-fichas');
+      for (const r of persona.relaciones) {
+        fichas.append(crear('span', 'form-ficha form-ficha--dispar', r));
+      }
+      filaRel.append(fichas);
+    } else {
+      const motivos = persona.sin_relacion_motivos || [];
+      const detalle = motivos[0] ? ` (${motivos[0]})` : '';
+      filaRel.append(crear('span', 'form-valor form-valor--vacio',
+        'No determinada' + detalle));
+    }
+    campos.append(filaRel);
+
+    if ((persona.numeros || []).length) {
+      const fila = crear('div', 'form-campo');
+      fila.append(crear('span', 'form-etiqueta', 'Número de documento'));
+      fila.append(crear('span', 'form-valor', persona.numeros.join(' · ')));
+      campos.append(fila);
+    }
+
+    if ((persona.roles || []).length) {
+      const fila = crear('div', 'form-campo');
+      fila.append(crear('span', 'form-etiqueta', 'Figura como'));
+      fila.append(crear('span', 'form-valor', persona.roles.join(' · ')));
+      campos.append(fila);
+    }
+
+    // Los documentos que respaldan la relación: es lo que la vuelve verificable, y lo
+    // que deja ver que el mismo vínculo está acreditado más de una vez.
+    const filaEv = crear('div', 'form-campo');
+    filaEv.append(crear('span', 'form-etiqueta', 'Acreditada por'));
+    const lista = crear('div', 'form-filas');
+    for (const ev of persona.evidencias || []) {
+      const linea = crear('div', 'form-fila');
+      const celda = crear('span', 'form-celda');
+      celda.append(crear('span', 'form-celda-etiqueta',
+        ev.tipo_documento || 'Documento'));
+      const partes = [];
+      if (ev.fecha) partes.push(ev.fecha);
+      if (ev.archivo) partes.push(ev.archivo);
+      celda.append(crear('span', 'form-valor', partes.join(' · ') || '—'));
+      if (!ev.formal) celda.append(crear('span', 'doc-nueva', 'No formal'));
+      linea.append(celda);
+      lista.append(linea);
+    }
+    filaEv.append(lista);
+    campos.append(filaEv);
+
+    seccion.append(campos);
+
+    // El aviso va al final del bloque de la persona, para que se lea después de ver
+    // de qué documentos depende la relación.
+    if (persona.aviso) seccion.append(crear('div', 'doc-motivo', persona.aviso));
+
+    bloque.append(seccion);
+  }
+
+  caja.append(bloque);
+  return caja;
+}
+
+/**
  * Análisis de documentos, una entrada por documento.
  *
  * Va después de la información de la persona. Cada bloque lleva un checkbox que decide
@@ -873,9 +1056,73 @@ function _documentos(analisis) {
   const r = analisis.resumen || {};
   const recuento = [`${r.archivos || 0} archivo(s)`, `${r.documentos || 0} documento(s)`];
   if (r.formularios) recuento.push(`${r.formularios} formulario(s)`);
+  if (r.cartas) recuento.push(`${r.cartas} carta(s) explicativa(s)`);
+  if (r.domicilios) recuento.push(`${r.domicilios} comprobante(s) de domicilio`);
+  if (r.soportes) recuento.push(`${r.soportes} comprobante(s) de soporte`);
+  if (r.beneficiarios) recuento.push(`${r.beneficiarios} persona(s) relacionada(s)`);
   if (r.identidades) recuento.push(`${r.identidades} documento(s) de identidad`);
   recuento.push(`${r.a_revision || 0} a revisión`);
   enc.append(crear('span', 'docs-resumen', recuento.join(' · ')));
+  // Cuanto acreditan los comprobantes de soporte, sumado POR MONEDA. Va acá arriba y
+  // no dentro de cada tarjeta porque es la lectura del CONJUNTO: el promedio de esta
+  // categoría es de casi cuatro comprobantes por petición, y una serie de doce
+  // liquidaciones del mismo empleo se lee como un total, no como doce tarjetas.
+  //
+  // No se convierte de moneda a propósito (ver core/soportes.py): "USD 27.000 + CLP
+  // 8.400.000" es exacto, y una sola cifra sería una estimación disfrazada de dato.
+  const totales = analisis.totales_soporte || [];
+  if (totales.length) {
+    const linea = crear('div', 'docs-totales');
+    linea.append(crear('span', 'docs-totales-titulo', 'Acreditado como ingreso'));
+    for (const t of totales) {
+      const ficha = crear('span', 'docs-total');
+      ficha.append(crear('b', null, `${t.moneda} ${t.total_legible}`));
+      ficha.append(crear('span', null,
+        t.documentos === 1
+          ? `1 ${t.naturaleza.toLowerCase()}`
+          : `${t.documentos} \u00d7 ${t.naturaleza.toLowerCase()}`));
+      linea.append(ficha);
+    }
+    // Un monto que no se pudo interpretar como número no entra en la suma, y hay que
+    // decirlo: un total que parece completo cuando no lo está es peor que no darlo.
+    const sin = totales[0].sin_interpretar || 0;
+    if (sin) {
+      linea.append(crear('span', 'docs-total-aviso',
+        sin === 1
+          ? '1 comprobante con un monto que no se pudo sumar'
+          : `${sin} comprobantes con montos que no se pudieron sumar`));
+    }
+    enc.append(linea);
+  }
+
+  // Lo que los comprobantes ACREDITAN contra lo que el cliente DECLARÓ en su
+  // formulario KYC. Es la conclusión del análisis de esta categoría, así que va arriba
+  // del listado y no dentro de una tarjeta: cruza dos categorías que llegan en
+  // archivos distintos (ver `comparar_respaldo` en core/contraste.py).
+  //
+  // Informativo, sin alertas: que falte respaldo de algo declarado puede ser
+  // simplemente que el cliente todavía no lo mandó.
+  const respaldo = analisis.respaldo_declarado;
+  if (respaldo) {
+    const franja = crear('div', 'docs-respaldo docs-respaldo--' + respaldo.estado);
+    franja.append(crear('span', 'docs-respaldo-titulo', 'Respaldo de lo declarado'));
+    // El texto trae saltos de línea (lo que falta y lo que sobra van en líneas
+    // aparte): cada uno es su propio párrafo, igual que en el contraste de domicilio.
+    for (const parrafo of (respaldo.texto || '').split('\n')) {
+      if (parrafo) franja.append(crear('div', 'docs-respaldo-txt', parrafo));
+    }
+    // Con qué se respalda cada origen declarado: sin esto, "tiene respaldo" no dice
+    // contra qué comprobante.
+    for (const r of respaldo.respaldados || []) {
+      const linea = crear('div', 'docs-respaldo-par');
+      linea.append(crear('b', null, r.declarado));
+      linea.append(r.con && r.con !== r.declarado
+        ? ` ← respaldado con: ${r.con}`
+        : ' ← respaldado');
+      franja.append(linea);
+    }
+    enc.append(franja);
+  }
   // Un documento de identidad vencido se avisa acá arriba y no solo dentro de su
   // tarjeta: es lo que hace que el analista no siga adelante sin verlo.
   if (r.identidades_vencidas) {
@@ -917,19 +1164,40 @@ function _documentos(analisis) {
     caja.append(tarjeta);
   }
 
-  for (const archivo of analisis.archivos || []) {
+  // Las personas relacionadas van después de la identidad del cliente: primero quién
+  // es él, después quiénes son los otros y qué son de él.
+  if (analisis.relacion_beneficiarios) {
+    caja.append(_beneficiarios(analisis.relacion_beneficiarios));
+  }
+
+  // Una tarjeta por DOCUMENTO, no por archivo: un archivo con una boleta y una factura
+  // sale como DOS tarjetas, cada una repitiendo el nombre del archivo y con UN solo
+  // checkbox. Antes las dos compartían tarjeta y la boleta parecía pertenecer a la
+  // factura (ver `agregar_documentos` en core/informe.py).
+  for (const doc of analisis.documentos || []) {
+    const c = doc.clasificacion || {};
     const tarjeta = crear('article', 'doc');
 
     const cabecera = crear('div', 'doc-archivo');
-    cabecera.append(crear('span', 'doc-archivo-icono', extension(archivo.archivo || '')));
-    cabecera.append(crear('span', null, archivo.archivo || '—'));
-    if (archivo.id) cabecera.append(_incluir(archivo.id, archivo.archivo || 'documento'));
+    cabecera.append(crear('span', 'doc-archivo-icono', extension(doc.archivo || '')));
+    cabecera.append(crear('span', null, doc.archivo || '—'));
+    // El único checkbox del documento va acá, en la cabecera: es la unidad que el
+    // analista marca o desmarca, y así queda claro que manda sobre TODO lo de abajo.
+    if (doc.id) {
+      const nombreDoc = c.subcategoria_legible
+        ? `${c.categoria_legible} › ${c.subcategoria_legible}`
+        : (c.categoria_legible || doc.archivo || 'documento');
+      cabecera.append(_incluir(doc.id, nombreDoc));
+    }
     tarjeta.append(cabecera);
 
-    for (const c of archivo.clasificaciones || []) {
-      const bloque = crear('div',
-        'doc-clasificacion' + (c.revision ? ' doc-clasificacion--revision' : ''));
+    // Un documento sin clasificación es un comprobante que la extracción leyó y el
+    // clasificador no listó aparte: se muestra igual, pero sin la línea de
+    // categoría/confianza, que no le corresponde.
+    const bloque = crear('div',
+      'doc-clasificacion' + (c.revision ? ' doc-clasificacion--revision' : ''));
 
+    if (doc.clasificacion) {
       const titulo = crear('div', 'doc-titulo');
       titulo.append(crear('span', null, c.categoria_legible));
       if (c.subcategoria_legible) {
@@ -963,10 +1231,24 @@ function _documentos(analisis) {
         bloque.append(_extraido(c.formulario, 'Datos declarados en el formulario'));
       }
 
-      tarjeta.append(bloque);
+      // Si era una carta explicativa de origen de fondos, su texto.
+      if (c.carta) bloque.append(_carta(c.carta));
     }
 
+    // Si es un comprobante de domicilio, su dirección y a nombre de quién viene.
+    if (doc.domicilio) {
+      bloque.append(_extraido(doc.domicilio, 'Comprobante de domicilio', 'datos leídos'));
+    }
 
+    // Si es un comprobante de soporte, qué acredita, por cuánto y entre quiénes. Usa el
+    // mismo renderizador genérico: el esquema de `core.soportes` esconde por su cuenta
+    // los campos que no corresponden al tipo de documento (ver `depende_de`), así que
+    // acá no hay nada que decidir.
+    if (doc.soporte) {
+      bloque.append(_extraido(doc.soporte, 'Comprobante de soporte', 'datos leídos'));
+    }
+
+    tarjeta.append(bloque);
     caja.append(tarjeta);
   }
 
@@ -1148,11 +1430,7 @@ function conectarEventos() {
     // archivos cargados. Dejarlos era peligroso: son los documentos de otra persona y
     // se habrían analizado contra el ID nuevo sin que nada lo advirtiera.
     if (estado.informe) limpiarResultado();
-    if (estado.archivos.length) {
-      estado.archivos = [];
-      $('archivos').value = '';   // sin esto el input recuerda la seleccion anterior
-      pintarArchivos();
-    }
+    limpiarArchivos();
     actualizarBoton();
   });
 
@@ -1178,6 +1456,8 @@ function conectarEventos() {
   zona.addEventListener('drop', (e) => {
     if (e.dataTransfer && e.dataTransfer.files) agregarArchivos(e.dataTransfer.files);
   });
+
+  $('boton-limpiar-archivos').addEventListener('click', limpiarArchivos);
 
   $('boton-analizar').addEventListener('click', analizar);
   $('boton-salir').addEventListener('click', salir);
