@@ -15,6 +15,9 @@ const CLAVE_SESION = 'compass_sesion';
 const CABECERA_SESION = 'X-Session-Token';
 const SONDEO_VPN_MS = 20000;    // cada cuanto se consulta el estado de VPN/BD
 const REVISION_IDLE_MS = 5000;  // cada cuanto se comprueba la inactividad
+// Cada cuanto se pregunta por un analisis en curso. El backend lo encola y puede
+// tardar minutos; sondear ademas mantiene viva la sesion mientras el analista espera.
+const SONDEO_ANALISIS_MS = 1500;
 // Cada cuanto se le avisa al BACKEND que hubo actividad, si la hubo. Bastante menor
 // que idleSeg (600s de por defecto) para que siempre llegue con margen de sobra.
 const RENOVACION_SESION_MS = 60000;
@@ -30,6 +33,9 @@ const estado = {
   archivos: [],
   vpnOk: false,
   enviando: false,
+  // Que mostrar mientras se espera: el puesto en la cola o el avance del analisis.
+  // Lo pinta `actualizarBoton`.
+  avance: '',
   nonceRenovado: false,
   informe: null,
   nombrePdf: '',
@@ -473,7 +479,7 @@ function actualizarBoton() {
   resumen.textContent = '';
 
   if (estado.enviando) {
-    resumen.textContent = 'Ejecutando analisis...';
+    resumen.textContent = estado.avance || 'Ejecutando analisis...';
     return;
   }
   if (!estado.segmento) {
@@ -1369,6 +1375,46 @@ async function descargarPdf(boton) {
   }
 }
 
+/**
+ * Frase que se le muestra al analista mientras espera.
+ *
+ * Distingue los dos motivos por los que puede estar esperando, que para el no son lo
+ * mismo: si esta en cola es porque otro analista llego antes, y si esta procesando es
+ * su propio analisis avanzando.
+ */
+function textoAvance(t) {
+  if (t.estado === 'en_cola') {
+    return t.posicion > 1
+      ? `En cola: ${t.posicion}º puesto. Hay otro análisis en curso...`
+      : 'En cola, a punto de empezar...';
+  }
+  if (t.total > 0) {
+    return `${t.detalle || 'Analizando'}: ${t.hechos} de ${t.total}...`;
+  }
+  return 'Consultando la base de datos...';
+}
+
+/**
+ * Sondea un analisis encolado hasta que termina, y devuelve su resultado.
+ *
+ * El backend responde al POST con un identificador en vez de dejar la peticion
+ * abierta durante minutos: asi ningun proxy la corta por timeout, un despliegue no
+ * mata el analisis en curso, y se puede mostrar el avance en vez de un spinner mudo.
+ */
+async function esperarAnalisis(trabajoId) {
+  for (;;) {
+    const resp = await api('/analisis/' + encodeURIComponent(trabajoId));
+    const t = resp.trabajo || {};
+
+    if (t.estado === 'listo') return t.resultado;
+    if (t.estado === 'error') throw new Error(t.mensaje || 'El análisis falló.');
+
+    estado.avance = textoAvance(t);
+    actualizarBoton();
+    await new Promise((r) => setTimeout(r, SONDEO_ANALISIS_MS));
+  }
+}
+
 async function analizar() {
   limpiarMensajes();
   limpiarResultado();
@@ -1378,19 +1424,28 @@ async function analizar() {
   if (!estado.vpnOk) return;
 
   estado.enviando = true;
+  estado.avance = 'Enviando documentos...';
   actualizarBoton();
 
   const cuerpo = new FormData();
   cuerpo.append('segmento', estado.segmento);
   cuerpo.append('id_cliente', $('id-cliente').value.trim());
+  // Modo encolado: el backend acusa recibo al instante y este cliente sondea. Sin
+  // esto el backend esperaria a terminar antes de responder, que es el contrato
+  // antiguo y sigue funcionando.
+  cuerpo.append('asincrono', '1');
   for (const f of estado.archivos) cuerpo.append('documentos', f, f.name);
 
   try {
-    pintarResultado(await api('/analizar', { method: 'POST', body: cuerpo }));
+    const acuse = await api('/analizar', { method: 'POST', body: cuerpo });
+    estado.avance = 'En cola, a punto de empezar...';
+    actualizarBoton();
+    pintarResultado(await esperarAnalisis(acuse.trabajo.id));
   } catch (e) {
     mensaje('app-error', e.message);
   } finally {
     estado.enviando = false;
+    estado.avance = '';
     actualizarBoton();
   }
 }

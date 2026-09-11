@@ -1,0 +1,11 @@
+# config.json del repo: trae la URL del tunel del despliegue viejo. Dentro del
+# contenedor lo genera el arranque (docker-config-json.sh) con la URL real del entorno.
+config.json
+
+.git/
+.gitignore
+.nojekyll
+README.md
+*.md
+Dockerfile
+.dockerignore
