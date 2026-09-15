@@ -1,0 +1,7 @@
+# Los scripts que corren DENTRO de un contenedor Linux van SIEMPRE con fin de linea
+# LF. Con CRLF el shebang queda "#!/bin/sh" y el kernel busca un interprete llamado
+# "/bin/sh" que no existe: la task muere con "no such file or directory" nombrando al
+# script, que es el error mas enganoso posible porque el script si esta ahi.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.template text eol=lf
