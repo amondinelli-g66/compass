@@ -82,9 +82,9 @@
       <div class="barra-espacio"></div>
 
       <div class="barra-derecha">
-        <span class="estado estado--cargando" id="estado-vpn" title="Estado de la VPN y la base de datos">
+        <span class="estado estado--cargando" id="estado-conexion" title="Estado del cluster de Redshift y la base de datos">
           <span class="estado-punto"></span>
-          <span id="estado-vpn-texto">Verificando VPN</span>
+          <span id="estado-conexion-texto">Verificando cluster</span>
         </span>
 
         <div class="usuario">
@@ -215,9 +215,9 @@
 
 
 <!-- ====================================================================== *
-     Modal — VPN desconectada
+     Modal — Cluster de Redshift no disponible
      ====================================================================== -->
-<div class="modal-fondo oculto" id="modal-vpn" role="dialog" aria-modal="true" aria-labelledby="modal-vpn-titulo">
+<div class="modal-fondo oculto" id="modal-conexion" role="dialog" aria-modal="true" aria-labelledby="modal-conexion-titulo">
   <div class="modal">
     <div class="modal-icono">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -225,20 +225,20 @@
         <path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v5"/><circle cx="12" cy="17.5" r=".8" fill="currentColor"/>
       </svg>
     </div>
-    <h2 id="modal-vpn-titulo">VPN desconectada</h2>
+    <h2 id="modal-conexion-titulo">Cluster no disponible</h2>
     <p>
-      La base de datos solo es accesible a traves de la VPN corporativa.
-      Conectala para poder ejecutar el analisis.
+      La base de datos vive en el cluster de Redshift. Si esta apagado (pausado)
+      no se puede consultar: hay que reanudarlo para ejecutar el analisis.
     </p>
 
     <ol class="modal-pasos">
-      <li>Abre el cliente de OpenVPN.</li>
-      <li>Conecta el perfil corporativo de Global66.</li>
+      <li>Abre la consola de AWS → Amazon Redshift → Clusters.</li>
+      <li>Si el cluster figura como <b>Paused</b>, reanudalo (Resume) y espera a que quede Available.</li>
       <li>Vuelve aqui y presiona Reintentar.</li>
     </ol>
 
-    <button class="btn btn--sec" id="boton-reintentar-vpn" type="button">Reintentar conexion</button>
-    <p class="modal-detalle" id="modal-vpn-detalle"></p>
+    <button class="btn btn--sec" id="boton-reintentar-conexion" type="button">Reintentar conexion</button>
+    <p class="modal-detalle" id="modal-conexion-detalle"></p>
   </div>
 </div>
 

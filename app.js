@@ -13,7 +13,7 @@
 
 const CLAVE_SESION = 'compass_sesion';
 const CABECERA_SESION = 'X-Session-Token';
-const SONDEO_VPN_MS = 20000;    // cada cuanto se consulta el estado de VPN/BD
+const SONDEO_CONEXION_MS = 20000;    // cada cuanto se consulta el estado del cluster / BD
 const REVISION_IDLE_MS = 5000;  // cada cuanto se comprueba la inactividad
 // Cada cuanto se pregunta por un analisis en curso. El backend lo encola y puede
 // tardar minutos; sondear ademas mantiene viva la sesion mientras el analista espera.
@@ -31,7 +31,7 @@ const estado = {
   ultimaRenovacion: 0,
   segmento: null,
   archivos: [],
-  vpnOk: false,
+  conexionOk: false,
   enviando: false,
   // Que mostrar mientras se espera: el puesto en la cola o el avance del analisis.
   // Lo pinta `actualizarBoton`.
@@ -46,7 +46,7 @@ const estado = {
 };
 
 let timerSesion = null;
-let timerVpn = null;
+let timerConexion = null;
 
 /* -------------------------------------------------------------------------- *
  * Utilidades
@@ -205,7 +205,7 @@ function arrancarVigilanciaSesion() {
 }
 
 /**
- * Marca actividad REAL del usuario. No la disparan el sondeo de VPN ni los
+ * Marca actividad REAL del usuario. No la disparan el sondeo del cluster ni los
  * temporizadores: la ventana de inactividad tiene que reflejar que hay alguien
  * trabajando, no que la pestana esta abierta.
  */
@@ -215,7 +215,7 @@ function registrarActividad() {
 
 function cerrarPorInactividad() {
   clearInterval(timerSesion);
-  clearInterval(timerVpn);
+  clearInterval(timerConexion);
   guardarToken('');
   estado.usuario = null;
   mostrar($('pantalla-app'), false);
@@ -225,7 +225,7 @@ function cerrarPorInactividad() {
 
 async function salir() {
   clearInterval(timerSesion);
-  clearInterval(timerVpn);
+  clearInterval(timerConexion);
   try { await api('/auth/logout', { method: 'POST' }); } catch { /* idempotente */ }
   guardarToken('');
   location.reload();
@@ -352,36 +352,53 @@ function capturarErroresGoogle() {
 }
 
 /* -------------------------------------------------------------------------- *
- * Estado de VPN / base de datos
+ * Estado del cluster / base de datos
  * -------------------------------------------------------------------------- */
 
-function pintarEstadoVpn(clase, txt) {
-  const el = $('estado-vpn');
+function pintarEstadoConexion(clase, txt) {
+  const el = $('estado-conexion');
   el.className = 'estado ' + clase;
-  texto('estado-vpn-texto', txt);
+  texto('estado-conexion-texto', txt);
 }
 
-async function sondearVpn({ mostrarModal = true } = {}) {
-  pintarEstadoVpn('estado--cargando', 'Verificando VPN');
+/*
+ * Texto del indicador cuando la conexion NO esta disponible. Con Redshift el
+ * problema tipico es que el cluster este apagado (pausado), que es distinto de
+ * "responde pero la consulta falla": el backend los distingue en `cluster_estado`
+ * (ver `core.vpn._estado_redshift_data`).
+ */
+function _textoConexionCaida(s) {
+  if (s.motor === 'mysql') return 'VPN desconectada';
+  if (s.cluster_encendido === false) {
+    return s.cluster_estado === 'paused' ? 'Cluster pausado' : 'Cluster apagado';
+  }
+  return 'Cluster sin responder';
+}
+
+async function sondearConexion({ mostrarModal = true } = {}) {
+  pintarEstadoConexion('estado--cargando', 'Verificando cluster');
   try {
     // /salud es publica: sondearla no renueva la ventana de inactividad.
     const s = await api('/salud');
-    estado.vpnOk = Boolean(s.vpn_ok && s.db_ok);
+    estado.conexionOk = Boolean(s.vpn_ok && s.db_ok);
 
-    if (estado.vpnOk) {
-      pintarEstadoVpn('estado--ok', 'VPN conectada');
-      mostrar($('modal-vpn'), false);
+    if (estado.conexionOk) {
+      pintarEstadoConexion('estado--ok',
+        s.motor === 'mysql' ? 'VPN conectada' : 'Cluster encendido');
+      mostrar($('modal-conexion'), false);
     } else {
-      pintarEstadoVpn('estado--mal', 'VPN desconectada');
-      $('modal-vpn-detalle').textContent =
+      pintarEstadoConexion('estado--mal', _textoConexionCaida(s));
+      $('modal-conexion-titulo').textContent =
+        s.motor === 'mysql' ? 'VPN desconectada' : 'Cluster no disponible';
+      $('modal-conexion-detalle').textContent =
         (s.destino ? 'Destino ' + s.destino + '. ' : '') + (s.detalle_bd || '');
-      if (mostrarModal) mostrar($('modal-vpn'), true);
+      if (mostrarModal) mostrar($('modal-conexion'), true);
     }
   } catch (e) {
-    estado.vpnOk = false;
-    pintarEstadoVpn('estado--mal', 'Backend inalcanzable');
-    $('modal-vpn-detalle').textContent = e.message;
-    if (mostrarModal) mostrar($('modal-vpn'), true);
+    estado.conexionOk = false;
+    pintarEstadoConexion('estado--mal', 'Backend inalcanzable');
+    $('modal-conexion-detalle').textContent = e.message;
+    if (mostrarModal) mostrar($('modal-conexion'), true);
   }
   actualizarBoton();
 }
@@ -472,7 +489,7 @@ function pintarArchivos() {
 
 function actualizarBoton() {
   const idCliente = $('id-cliente').value.trim();
-  const listo = Boolean(estado.segmento) && Boolean(idCliente) && estado.vpnOk && !estado.enviando;
+  const listo = Boolean(estado.segmento) && Boolean(idCliente) && estado.conexionOk && !estado.enviando;
   $('boton-analizar').disabled = !listo;
 
   const resumen = $('resumen');
@@ -490,8 +507,8 @@ function actualizarBoton() {
     resumen.textContent = 'Ingresa el ID del cliente.';
     return;
   }
-  if (!estado.vpnOk) {
-    resumen.textContent = 'Conecta la VPN para poder consultar la base de datos.';
+  if (!estado.conexionOk) {
+    resumen.textContent = 'El cluster de Redshift no esta disponible para consultar la base de datos.';
     return;
   }
 
@@ -1419,9 +1436,10 @@ async function analizar() {
   limpiarMensajes();
   limpiarResultado();
 
-  // La VPN se revalida justo antes de ejecutar: pudo caerse desde el ultimo sondeo.
-  await sondearVpn();
-  if (!estado.vpnOk) return;
+  // La conexion se revalida justo antes de ejecutar: el cluster pudo apagarse desde
+  // el ultimo sondeo.
+  await sondearConexion();
+  if (!estado.conexionOk) return;
 
   estado.enviando = true;
   estado.avance = 'Enviando documentos...';
@@ -1471,9 +1489,9 @@ function entrarALaApp() {
   }
 
   arrancarVigilanciaSesion();
-  sondearVpn();
-  clearInterval(timerVpn);
-  timerVpn = setInterval(() => sondearVpn({ mostrarModal: false }), SONDEO_VPN_MS);
+  sondearConexion();
+  clearInterval(timerConexion);
+  timerConexion = setInterval(() => sondearConexion({ mostrarModal: false }), SONDEO_CONEXION_MS);
 }
 
 function conectarEventos() {
@@ -1516,7 +1534,7 @@ function conectarEventos() {
 
   $('boton-analizar').addEventListener('click', analizar);
   $('boton-salir').addEventListener('click', salir);
-  $('boton-reintentar-vpn').addEventListener('click', () => sondearVpn());
+  $('boton-reintentar-conexion').addEventListener('click', () => sondearConexion());
   $('boton-reiniciar-sesion').addEventListener('click', () => location.reload());
 
   $('boton-pdf').addEventListener('click', () => descargarPdf($('boton-pdf')));

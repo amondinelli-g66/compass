@@ -175,7 +175,7 @@ button { font-family: inherit; }
 
 .logo-g66--pie { display: block; height: 30px; width: auto; margin: 0 auto 10px; opacity: .75; }
 
-/* Estado de VPN */
+/* Estado del cluster / BD */
 .estado {
   display: inline-flex;
   align-items: center;
@@ -1307,7 +1307,7 @@ button { font-family: inherit; }
 .sin-datos p { font-size: 13px; color: #5A6685; }
 
 /* ========================================================================== *
- * Modal (gate de VPN / sesión expirada)
+ * Modal (gate de conexión / sesión expirada)
  * ========================================================================== */
 
 .modal-fondo {
@@ -1369,7 +1369,7 @@ button { font-family: inherit; }
 /* -------------------------------------------------------------------------- *
  * Modal — Resultado del analisis
  *
- * A diferencia de los modales de VPN/sesion (chicos, centrados, todo texto), este
+ * A diferencia de los modales de conexión/sesión (chicos, centrados, todo texto), este
  * necesita alojar un informe entero: es alto, con el encabezado y el pie FIJOS
  * (para que "Descargar PDF" y "Cerrar" esten siempre a la vista) y solo el cuerpo
  * hace scroll.
