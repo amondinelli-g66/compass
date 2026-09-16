@@ -29,7 +29,19 @@ ENV COMPASS_BACKEND=http://backend:8000
 
 # config.json le dice al frontend donde vive la API. Se genera en el ARRANQUE y no se
 # hornea en la imagen, para que la MISMA imagen sirva en local, staging y produccion.
-COPY docker-config-json.sh /docker-entrypoint.d/40-config-json.sh
+# --chmod=755 no es opcional: el entrypoint de nginx SALTEA los scripts que no tienen
+# permiso de ejecucion ("Ignoring ..., not executable") y sigue arrancando como si nada.
+# Git no guarda el bit de ejecucion en Windows, asi que sin esto el script viaja como
+# 644, config.json nunca se genera y el fallo es silencioso: nginx levanta bien y solo
+# se nota en un 404 de /config.json.
+COPY --chmod=755 docker-config-json.sh /docker-entrypoint.d/40-config-json.sh
+
+# El chmod es imprescindible: el entrypoint de nginx RECORRE /docker-entrypoint.d pero
+# SALTA lo que no es ejecutable, con un aviso en el log y sin fallar. Git no versiona el
+# bit de ejecucion en Windows, asi que el script llega sin el y config.json no se genera.
+# El sintoma es un 404 en /config.json y un frontend que arranca diciendo que no pudo
+# leerlo, sin ninguna pista de por que.
+RUN chmod +x /docker-entrypoint.d/40-config-json.sh
 
 # nginx:alpine ya corre los workers como usuario `nginx`; el master necesita root para
 # escribir en /docker-entrypoint.d y abrir el puerto.
