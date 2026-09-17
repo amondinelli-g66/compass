@@ -103,7 +103,7 @@
   <main class="contenido">
     <div class="encabezado">
       <h1>Analisis de cliente</h1>
-      <p>Selecciona el segmento, ingresa el ID del cliente y adjunta los documentos recibidos.</p>
+      <p>Ingresa el ID del cliente y adjunta los documentos recibidos.</p>
     </div>
 
     <div class="mensaje mensaje--error oculto" id="app-error"></div>
@@ -121,13 +121,14 @@
 
       <div class="segmentos" role="group" aria-label="Segmento del cliente">
         <button class="segmento" type="button" id="seg-b2c" data-segmento="B2C"
-                aria-pressed="false" aria-label="B2C, persona natural">
+                aria-pressed="true" aria-label="B2C, persona natural">
           <span class="segmento-check" aria-hidden="true">&check;</span>
           <span class="segmento-tag">B2C</span>
           <span class="segmento-desc">Persona natural</span>
         </button>
         <button class="segmento" type="button" id="seg-b2b" data-segmento="B2B"
-                aria-pressed="false" aria-label="B2B, persona juridica o empresa">
+                aria-pressed="false" aria-label="B2B, persona juridica o empresa"
+                disabled title="Todavia no disponible: la consulta para clientes B2B no esta definida.">
           <span class="segmento-check" aria-hidden="true">&check;</span>
           <span class="segmento-tag">B2B</span>
           <span class="segmento-desc">Persona juridica / empresa</span>

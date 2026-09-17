@@ -21,6 +21,11 @@ const SONDEO_ANALISIS_MS = 1500;
 // Cada cuanto se le avisa al BACKEND que hubo actividad, si la hubo. Bastante menor
 // que idleSeg (600s de por defecto) para que siempre llegue con margen de sobra.
 const RENOVACION_SESION_MS = 60000;
+// B2B todavia no tiene consulta definida en el backend (ver `api.main._construir_informe`:
+// devuelve un informe vacio con el aviso), asi que hoy el unico segmento real es B2C: se
+// deja marcado de entrada y B2B en gris, sin clic. Cuando exista el SQL, esto vuelve a
+// true y el selector funciona como antes; no hay nada mas que deshacer.
+const B2B_HABILITADO = false;
 
 const estado = {
   backend: '',
@@ -1496,7 +1501,16 @@ function entrarALaApp() {
 
 function conectarEventos() {
   $('seg-b2c').addEventListener('click', () => elegirSegmento('B2C'));
-  $('seg-b2b').addEventListener('click', () => elegirSegmento('B2B'));
+
+  if (B2B_HABILITADO) {
+    $('seg-b2b').addEventListener('click', () => elegirSegmento('B2B'));
+  } else {
+    // Sin B2B no hay nada que elegir: se deja B2C puesto para que el analista no
+    // tenga que marcar la unica opcion que existe. El boton de B2B queda
+    // deshabilitado en el HTML; aca solo se refuerza por si el flag cambia.
+    $('seg-b2b').disabled = true;
+    elegirSegmento('B2C');
+  }
 
   $('id-cliente').addEventListener('input', () => {
     // Al cambiar de cliente se limpia TODO lo del anterior: el informe y también los
