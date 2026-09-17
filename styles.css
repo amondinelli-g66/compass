@@ -306,7 +306,23 @@ button { font-family: inherit; }
   transition: var(--trans);
 }
 
-.segmento:hover { border-color: var(--light-blue); background: var(--light-blue-light); }
+.segmento:hover:not(:disabled) {
+  border-color: var(--light-blue);
+  background: var(--light-blue-light);
+}
+
+/* Segmento no disponible (hoy, B2B: su consulta todavía no está definida). Se deja a
+   la vista en gris, y no oculto, para que se entienda que existe pero aún no se puede
+   elegir. El `title` del botón explica por qué. */
+.segmento:disabled {
+  cursor: not-allowed;
+  background: #F7F8FB;
+  border-color: var(--light-gray);
+  opacity: .55;
+}
+
+.segmento:disabled .segmento-tag,
+.segmento:disabled .segmento-desc { color: #8A93A8; }
 
 .segmento[aria-pressed="true"] {
   border-color: var(--blue);
