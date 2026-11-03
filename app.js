@@ -1,12 +1,11 @@
 /* ==========================================================================
  * Compass — frontend
  *
- * Vive en GitHub Pages (origen distinto al backend), por lo que la sesion NO
- * puede viajar en cookies de terceros: el backend devuelve un token de sesion
- * firmado y aqui se envia en la cabecera `Authorization: Bearer`.
+ * En produccion lo sirve nginx en el mismo origen que la API
+ * (compass.global66.com). La sesion viaja como token firmado en la cabecera
+ * `Authorization: Bearer`, que sirve igual si algun dia la API vive en otro origen.
  *
- * La URL del backend se lee de config.json para poder cambiarla sin recompilar
- * (el backend corre en la maquina del analista y se expone por tunel).
+ * La URL del backend se lee de config.json (vacia = mismo origen).
  * ========================================================================== */
 
 'use strict';
@@ -383,8 +382,9 @@ function _textoConexionCaida(s) {
 async function sondearConexion({ mostrarModal = true } = {}) {
   pintarEstadoConexion('estado--cargando', 'Verificando cluster');
   try {
-    // /salud es publica: sondearla no renueva la ventana de inactividad.
-    const s = await api('/salud');
+    // Exige sesion pero NO renueva la ventana de inactividad (ver
+    // api.auth.RUTAS_SIN_RENOVAR): es un sondeo, no actividad del analista.
+    const s = await api('/salud/detalle');
     estado.conexionOk = Boolean(s.vpn_ok && s.db_ok);
 
     if (estado.conexionOk) {
